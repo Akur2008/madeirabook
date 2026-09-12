@@ -1,3 +1,6 @@
+
+require('dotenv').config();
+
 const { z } = require('zod');
 
 const schema = z.object({
