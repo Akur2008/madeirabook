@@ -1,108 +1,344 @@
+
 const express = require('express');
-const pool = require('../../db/client');
-const { createExpressAccount, createAccountLink } = require('../services/stripe');
+const db = require('../../db/client');
+const stripeSvc = require('../services/stripe');
 const config = require('../config');
-const logger = require('../logger');
 
 const router = express.Router();
 
-router.get('/owners', async (req, res, next) => {
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, function (c) {
+    var map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    };
+    return map[c];
+  });
+}
+
+router.get('/', async (req, res, next) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT id, email, stripe_account_id, rnal, telegram_id, created_at
-       FROM owners ORDER BY created_at DESC`
-    );
-    res.json({ owners: rows });
-  } catch (err) {
-    next(err);
-  }
-});
+    const q = 'SELECT p.smoobu_id, p.commission_percent, '
+      + 'p.charges_enabled, o.id AS owner_id, '
+      + 'o.email AS owner_email, o.stripe_account_id, '
+      + 'o.rnal FROM properties p '
+      + 'JOIN owners o ON o.id = p.owner_id '
+      + 'ORDER BY p.created_at DESC';
+    const result = await db.query(q);
+    const rows = result.rows;
 
-router.post('/owners', async (req, res, next) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'email required' });
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const account = await createExpressAccount(email);
-    const { rows } = await client.query(
-      `INSERT INTO owners (email, stripe_account_id)
-       VALUES ($1, $2)
-       RETURNING id, email, stripe_account_id, created_at`,
-      [email, account.id]
-    );
-    await client.query('COMMIT');
-
-    const accountLink = await createAccountLink(
-      account.id,
-      `${config.APP_URL}/admin/owners/${rows[(err0].id}/refresh`,
-      `${config.);
-APP_URL}/admin/owners/${ rows[0].id}/return`
- }    );
-
-    logger.info({ finally ownerId: rows[0].id }, 'Owner created');
-    res.status(201).json({ owner: rows[0], onboardingUrl: accountLink.url });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    next {
-    client.release();
-  }
-});
-
-router.get('/properties', async (req, res, next) => {
-  try {
-    const { rows } = await pool.query(
-      `SELECT p.id, p.smoobu_id, p.commission_percent, p.charges_enabled,
-              p.created_at, o.email AS owner_email, o.id AS owner_id
-       FROM properties p
-       JOIN owners o ON o.id = p.owner_id
-       ORDER BY p.created_at DESC`
-    );
-    res.json({ properties: rows });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post('/properties', async (req, res, next) => {
-  const { smoobu_id, owner_id, commission_percent } = req.body;
-  if (!smoobu_id || !owner_id) {
-    return res.status(400).json({ error: 'smoobu_id and owner_id required' });
-  }
-  const percent = commission_percent ?? 12.0;
-  if (percent < 0 || percent > 100) {
-    return res.status(400).json({ error: 'commission_percent must be 0..100' });
-  }
-  try {
-    const { rows } = await pool.query(
-      `INSERT INTO properties (smoobu_id, owner_id, commission_percent)
-       VALUES ($1, $2, $3)
-       RETURNING *`,
-      [smoobu_id, owner_id, percent]
-    );
-    res.status(201).json({ property: rows[0] });
-  } catch (err) {
-    if (err.code === '23505') {
-      return res.status(409).json({ error: 'smoobu_id already exists' });
+    let linkBox = '';
+    if (req.query.link) {
+      linkBox = '<div style="background:#e6f4ea;'
+        + 'border:1px solid #34a853;padding:20px;'
+        + 'border-radius:8px;margin-bottom:25px;">'
+        + '<h3 style="margin-top:0;color:#137333;">'
+        + 'Ссылка для владельца создана</h3>'
+        + '<p>Объект: <b>'
+        + escapeHtml(req.query.prop || '')
+        + '</b> | Владелец: <b>'
+        + escapeHtml(req.query.email || '')
+        + '</b></p>'
+        + '<input id="copyInput" value="'
+        + escapeHtml(req.query.link)
+        + '" readonly style="width:100%;padding:10px;">'
+        + '<button onclick="navigator.clipboard.'
+        + 'writeText(document.getElementById(\'copyInput\').value);'
+        + 'alert(\'Скопировано\');">Скопировать</button>'
+        + '</div>';
     }
-    next(err);
+
+    let list = '';
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      let kyc;
+      if (r.charges_enabled) {
+        kyc = '<span style="background:#28a745;color:#fff;'
+          + 'padding:2px 8px;border-radius:4px;font-size:12px;">'
+          + 'Активен</span>';
+      } else {
+        kyc = '<span style="background:#dc3545;color:#fff;'
+          + 'padding:2px 8px;border-radius:4px;font-size:12px;">'
+          + 'Не верифицирован</span>';
+      }
+      list += '<div style="background:#fff;padding:15px;'
+        + 'margin-bottom:12px;border-radius:8px;'
+        + 'border:1px solid #ddd;">'
+        + '<b>Smoobu ID:</b> ' + escapeHtml(r.smoobu_id) + '<br>'
+        + '<b>Email:</b> ' + escapeHtml(r.owner_email) + '<br>'
+        + '<b>RNAL:</b> ' + escapeHtml(r.rnal || '—') + '<br>'
+        + '<b>Stripe:</b> <code>'
+        + escapeHtml(r.stripe_account_id || '—') + '</code><br>'
+        + '<b>KYC:</b> ' + kyc + '<br>'
+        + '<form action="/admin/update-commission" '
+        + 'method="POST" style="margin-top:12px;">'
+        + '<input type="hidden" name="smoobuId" value="'
+        + escapeHtml(r.smoobu_id) + '">'
+        + '<label>Комиссия, %:</label> '
+        + '<input type="number" name="commissionPercent" value="'
+        + r.commission_percent
+        + '" min="0" max="100" step="0.5" required '
+        + 'style="width:80px;"> '
+        + '<button type="submit">Изменить</button>'
+        + '</form></div>';
+    }
+
+    const html = '<html><head><meta charset="utf-8">'
+      + '<title>Madeirabook Admin</title></head>'
+      + '<body style="font-family:Arial;max-width:850px;'
+      + 'margin:auto;padding:20px;background:#f4f6f8;">'
+      + '<h2>Madeirabook Admin</h2>'
+      + linkBox
+      + '<div style="background:#fff;padding:20px;'
+      + 'border-radius:8px;margin-bottom:25px;">'
+      + '<h3>Привязать объект</h3>'
+      + '<form action="/admin/create-owner" method="POST">'
+      + '<input name="smoobuId" placeholder="Smoobu ID" required '
+      + 'style="display:block;padding:8px;margin-bottom:8px;'
+      + 'width:100%;">'
+      + '<input name="email" type="email" '
+      + 'placeholder="Email владельца" required '
+      + 'style="display:block;padding:8px;margin-bottom:8px;'
+      + 'width:100%;">'
+      + '<input name="rnal" placeholder="RNAL" '
+      + 'style="display:block;padding:8px;margin-bottom:8px;'
+      + 'width:100%;">'
+      + '<input name="commissionPercent" type="number" value="12" '
+      + 'min="0" max="100" step="0.5" required '
+      + 'style="display:block;padding:8px;margin-bottom:8px;'
+      + 'width:100%;">'
+      + '<button type="submit" style="padding:10px 20px;'
+      + 'background:#635bff;color:#fff;border:none;'
+      + 'border-radius:4px;">Создать ссылку</button>'
+      + '</form></div>'
+      + '<h3>Объекты</h3>'
+      + (list || '<p>Пусто</p>')
+      + '</body></html>';
+
+    res.send(html);
+  } catch (e) {
+    next(e);
   }
 });
 
-router.patch('/properties/:id/commission', async (req, res, next) => {
-  const { id } = req.params;
-  const { commission_percent, changed_by } = req.body;
-
-  if (commission_percent == null || commission_percent < 0 || commission_percent > 100) {
-    return res.status(400).json({ error: 'commission_percent must be 0..100' });
-  }
-  if (!changed_by) {
-    return res.status(400).json({ error: 'changed_by required' });
-  }
-
-  const client = await pool.connect();
+router.post('/create-owner', async (req, res, next) => {
   try {
-    await client.query('BEGIN');
+    const smoobuId = req.body.smoobuId;
+    const email = req.body.email;
+    const rnal = req.body.rnal;
+    const commissionPercent = req.body.commissionPercent;
 
-    
+    if (!smoobuId || !email) {
+      return res.status(400).send('smoobuId и email обязательны');
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanPropId = String(smoobuId).trim();
+    let pct = 12;
+    if (commissionPercent != null) {
+      pct = Number(commissionPercent);
+    }
+
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      return res.status(400).send('Некорректная комиссия');
+    }
+
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+
+      const ownerRes = await client.query(
+        'SELECT id, stripe_account_id FROM owners WHERE email = $1',
+        [cleanEmail]
+      );
+
+      let ownerId;
+      let stripeAccountId;
+
+      if (ownerRes.rows.length) {
+        ownerId = ownerRes.rows[0].id;
+        stripeAccountId = ownerRes.rows[0].stripe_account_id;
+
+        if (rnal) {
+          await client.query(
+            'UPDATE owners SET rnal = $1 WHERE id = $2',
+            [rnal, ownerId]
+          );
+        }
+      }
+
+      if (!stripeAccountId) {
+        const account = await stripeSvc.createExpressAccount(cleanEmail);
+        stripeAccountId = account.id;
+
+        if (ownerRes.rows.length) {
+          await client.query(
+            'UPDATE owners SET stripe_account_id = $1 WHERE id = $2',
+            [stripeAccountId, ownerId]
+          );
+        } else {
+          const ins = await client.query(
+            'INSERT INTO owners (email, stripe_account_id, rnal) '
+            + 'VALUES ($1, $2, $3) RETURNING id',
+            [cleanEmail, stripeAccountId, rnal || null]
+          );
+          ownerId = ins.rows[0].id;
+        }
+      }
+
+      await client.query(
+        'INSERT INTO properties (smoobu_id, owner_id, '
+        + 'commission_percent) VALUES ($1, $2, $3) '
+        + 'ON CONFLICT (smoobu_id) DO UPDATE SET '
+        + 'owner_id = EXCLUDED.owner_id, '
+        + 'commission_percent = EXCLUDED.commission_percent',
+        [cleanPropId, ownerId, pct]
+      );
+
+      await client.query('COMMIT');
+
+      const base = config.APP_URL;
+      const link = await stripeSvc.createOnboardingLink(
+        stripeAccountId,
+        base + '/admin/success?account_id=' + stripeAccountId
+          + '&smoobu_id=' + encodeURIComponent(cleanPropId),
+        base + '/admin/reauth?account_id=' + stripeAccountId
+          + '&smoobu_id=' + encodeURIComponent(cleanPropId)
+      );
+
+      const redirectUrl = '/admin?link='
+        + encodeURIComponent(link.url)
+        + '&email=' + encodeURIComponent(cleanEmail)
+        + '&prop=' + encodeURIComponent(cleanPropId);
+
+      res.redirect(303, redirectUrl);
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get('/success', async (req, res, next) => {
+  try {
+    const accountId = req.query.account_id;
+    if (!accountId) {
+      return res.redirect(303, '/admin');
+    }
+
+    const account = await stripeSvc.retrieveAccount(accountId);
+
+    await db.query(
+      'UPDATE properties p SET charges_enabled = $1 '
+      + 'FROM owners o WHERE p.owner_id = o.id '
+      + 'AND o.stripe_account_id = $2',
+      [account.charges_enabled, accountId]
+    );
+
+    const status = account.charges_enabled
+      ? 'Активен'
+      : 'Ожидает верификации';
+
+    res.send(
+      '<html><body style="font-family:Arial;'
+      + 'text-align:center;padding:40px;">'
+      + '<h2 style="color:#28a745;">'
+      + 'Владелец завершил настройку</h2>'
+      + '<p>Статус: ' + status + '</p>'
+      + '<a href="/admin" style="padding:10px 20px;'
+      + 'background:#635bff;color:#fff;text-decoration:none;'
+      + 'border-radius:4px;">В админку</a>'
+      + '</body></html>'
+    );
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get('/reauth', async (req, res, next) => {
+  try {
+    const accountId = req.query.account_id;
+    const smoobuId = req.query.smoobu_id || '';
+    if (!accountId) {
+      return res.redirect(303, '/admin');
+    }
+
+    const base = config.APP_URL;
+    const link = await stripeSvc.createOnboardingLink(
+      accountId,
+      base + '/admin/success?account_id=' + accountId
+        + '&smoobu_id=' + encodeURIComponent(smoobuId),
+      base + '/admin/reauth?account_id=' + accountId
+        + '&smoobu_id=' + encodeURIComponent(smoobuId)
+    );
+
+    res.redirect(303, link.url);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/update-commission', async (req, res, next) => {
+  try {
+    const smoobuId = req.body.smoobuId;
+    const commissionPercent = req.body.commissionPercent;
+    const pct = Number(commissionPercent);
+
+    if (!smoobuId || !Number.isFinite(pct) || pct < 0 || pct > 100) {
+      return res.status(400).send('Некорректные данные');
+    }
+
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+
+      const sel = await client.query(
+        'SELECT id, commission_percent FROM properties '
+        + 'WHERE smoobu_id = $1 FOR UPDATE',
+        [smoobuId]
+      );
+
+      if (!sel.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).send('Объект не найден');
+      }
+
+      const propertyId = sel.rows[0].id;
+      const oldPct = sel.rows[0].commission_percent;
+
+      await client.query(
+        'UPDATE properties SET commission_percent = $1 WHERE id = $2',
+        [pct, propertyId]
+      );
+
+      await client.query(
+        'INSERT INTO commission_history '
+        + '(property_id, old_percent, new_percent, changed_by) '
+        + 'VALUES ($1, $2, $3, $4)',
+        [propertyId, oldPct, pct,
+         req.headers['x-admin-user'] || 'admin']
+      );
+
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+
+    res.redirect(303, '/admin');
+  } catch (e) {
+    next(e);
+  }
+});
+
+module.exports = router;

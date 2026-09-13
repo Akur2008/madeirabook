@@ -1,50 +1,69 @@
-import config from '../../config.js';
+const axios = require('axios');
+const config = require('../../config');
 
-const BASE_URL = 'https://login.smoobu.com/api';
+const client = axios.create({
+  baseURL: 'https://login.smoobu.com/api',
+  headers: {
+    'Api-Key': config.SMOOBU_API_KEY,
+    'Content-Type': 'application/json'
+  },
+  timeout: 10000
+});
 
-// Вспомогательная функция для запросов
-async function request(endpoint, options = {}) {
-  const url = `${BASE_URL}${endpoint}`;
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Api-Key': config.SMOOBU_API_KEY,
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+async function getPrice(propertyId, arrivalDate, departureDate) {
+  const res = await client.get('/rates', {
+    params: {
+      apartmentId: propertyId,
+      arrivalDate: arrivalDate,
+      departureDate: departureDate
+    }
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Smoobu API error ${response.status}: ${errorText}`);
+  var price = res.data.totalPrice;
+  if (price == null) price = res.data.price;
+  if (!Number.isFinite(Number(price))) {
+    throw new Error(
+      'Smoobu вернул некорректную цену: '
+      + JSON.stringify(res.data)
+    );
   }
-
-  return response.json();
+  return Number(price);
 }
 
-// Получить список апартаментов
-export async function getApartments() {
-  return request('/apartments');
+async function createReservation(p) {
+  const body = {
+    propertyId: Number(p.propertyId),
+    arrivalDate: p.arrivalDate,
+    departureDate: p.departureDate,
+    type: '1',
+    price: Number(p.price),
+    firstName: p.guestName || 'Guest',
+    lastName: '',
+    email: p.guestEmail
+  };
+  const res = await client.post('/reservations', body);
+  if (!res.data || !res.data.id) {
+    throw new Error('Smoobu не вернул ID брони');
+  }
+  return res.data.id;
 }
 
-// Получить информацию по конкретному апартаменту
-export async function getApartment(id) {
-  return request(`/apartments/${id}`);
+async function markPaid(smoobuBookingId) {
+  await client.put(
+    '/reservations/' + smoobuBookingId,
+    { paid: true }
+  );
 }
 
-// Получить доступность и цены на период
-export async function getAvailability(apartmentId, startDate, endDate) {
-  const query = new URLSearchParams({
-    arrivalDate: startDate,
-    departureDate: endDate,
-  });
-  return request(`/apartments/${apartmentId}/availability?${query}`);
+async function cancelReservation(smoobuBookingId) {
+  await client.put(
+    '/reservations/' + smoobuBookingId,
+    { status: 'cancelled' }
+  );
 }
 
-// Создать бронь в Smoobu (вызывается после успешной оплаты в Stripe)
-export async function createBooking(apartmentId, bookingData) {
-  return request(`/apartments/${apartmentId}/bookings`, {
-    method: 'POST',
-    body: JSON.stringify(bookingData),
-  });
-}
+module.exports = {
+  getPrice: getPrice,
+  createReservation: createReservation,
+  markPaid: markPaid,
+  cancelReservation: cancelReservation
+};

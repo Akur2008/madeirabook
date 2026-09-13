@@ -40,3 +40,10 @@ app.use(errorHandler);
 
 // Для Vercel Functions экспортируем app, а не запускаем listen
 module.exports = app;
+
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, function () {
+    console.log('Madeirabook started on http://localhost:' + PORT);
+  });
+}

@@ -1,77 +1,76 @@
-import Stripe from 'stripe';
-import config from '../config.js';
+const Stripe = require('stripe');
+const config = require('../config');
 
-const stripe = new Stripe(config.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-06-20', // фиксируем версию API
-});
+const stripe = new Stripe(config.STRIPE_SECRET_KEY);
 
-/**
- * Создать Stripe Checkout Session для бронирования.
- * Используем Destination Charges + on_behalf_of.
- */
-export async function createCheckoutSession({
-  amountCents,
-  platformFeeCents,
-  stripeAccountId, // ID Express аккаунта владельца
-  propertyId,
-  bookingId,
-  guestEmail,
-  successUrl,
-  cancelUrl,
-}) {
-  return stripe.checkout.sessions.create({
-    mode: 'payment',
-    payment_method_types: ['card'],
-    customer_email: guestEmail,
-    line_items: [
-      {
-        price_data: {
-          currency: 'eur',
-          product_data: {
-            name: `Бронирование #${bookingId}`,
-          },
-          unit_amount: amountCents,
-        },
-        quantity: 1,
-      },
-    ],
-    payment_intent_data: {
-      application_fee_amount: platformFeeCents,
-      on_behalf_of: stripeAccountId, // MoR = владелец
-    },
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    metadata: {
-      propertyId: String(propertyId),
-      bookingId: String(bookingId),
-    },
-  });
-}
-
-/**
- * Создать Express-аккаунт для владельца.
- */
-export async function createExpressAccount(email) {
+async function createExpressAccount(email) {
   return stripe.accounts.create({
     type: 'express',
-    email,
+    email: email,
     capabilities: {
       card_payments: { requested: true },
-      transfers: { requested: true },
-    },
+      transfers: { requested: true }
+    }
   });
 }
 
-/**
- * Сгенерировать ссылку для онбординга владельца в Stripe.
- */
-export async function createAccountLink(accountId, refreshUrl, returnUrl) {
+async function createOnboardingLink(accountId, returnUrl, refreshUrl) {
   return stripe.accountLinks.create({
     account: accountId,
     refresh_url: refreshUrl,
     return_url: returnUrl,
-    type: 'account_onboarding',
+    type: 'account_onboarding'
   });
 }
 
-export default stripe;
+async function retrieveAccount(accountId) {
+  return stripe.accounts.retrieve(accountId);
+}
+
+function constructWebhookEvent(rawBody, signature) {
+  return stripe.webhooks.constructEvent(
+    rawBody,
+    signature,
+    config.STRIPE_WEBHOOK_SECRET
+  );
+}
+
+async function createBookingCheckoutSession(opts) {
+  var lineItems = [{
+    price_data: {
+      currency: 'eur',
+      product_data: { name: opts.description },
+      unit_amount: opts.amountCents
+    },
+    quantity: 1
+  }];
+
+  var paymentIntentData = {
+    transfer_data: { destination: opts.stripeAccountId },
+    on_behalf_of: opts.stripeAccountId,
+    metadata: opts.metadata || {}
+  };
+
+  if (opts.platformFeeCents && opts.platformFeeCents > 0) {
+    paymentIntentData.application_fee_amount = opts.platformFeeCents;
+  }
+
+  return stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    line_items: lineItems,
+    mode: 'payment',
+    customer_email: opts.guestEmail,
+    payment_intent_data: paymentIntentData,
+    success_url: opts.successUrl,
+    cancel_url: opts.cancelUrl
+  });
+}
+
+module.exports = {
+  stripe: stripe,
+  createExpressAccount: createExpressAccount,
+  createOnboardingLink: createOnboardingLink,
+  retrieveAccount: retrieveAccount,
+  constructWebhookEvent: constructWebhookEvent,
+  createBookingCheckoutSession: createBookingCheckoutSession
+};

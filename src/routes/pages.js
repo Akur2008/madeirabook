@@ -1,60 +1,75 @@
+
 const express = require('express');
-const pool = require('../../db/client');
-const logger = require('../logger');
+const db = require('../../db/client');
 
 const router = express.Router();
 
-/**
- * GET /success?session_id=...
- * Страница после успешной оплаты.
- */
-router.get('/success', async (req, res, next) => {
-  const { session_id } = req.query;
-  if (!session_id) {
-    return res.status(400).send('Missing session_id');
-  }
-
-  try {
-    const { rows } = await pool.query(
-      `SELECT id, status, guest_email, arrival_date, departure_date
-       FROM bookings WHERE stripe_session_id = $1`,
-      [session_id]
-    );
-
-    if (rows.length === 0) {
-      return res.status(404).send('Booking not found');
-    }
-
-    const booking = rows[0];
-
-    res.send(`
-      <html>
-        <body style="font-family: sans-serif; text-align: center; padding: 50px;">
-          <h1>✅ Оплата прошла успешно!</h1>
-          <p>Номер вашей брони: <strong>#${booking.id}</strong></p>
-          <p>Мы отправили детали на <strong>${booking.guest_email}</strong></p>
-          <p>Даты: ${booking.arrival_date} → ${booking.departure_date}</p>
-        </body>
-      </html>
-    `);
-  } catch (err) {
-    next(err);
-  }
+router.get('/', (req, res) => {
+  res.send(
+    '<html><head><meta charset="utf-8"></head>'
+    + '<body style="font-family:Arial;text-align:center;padding:40px;">'
+    + '<h1>Madeirabook</h1>'
+    + '<p>Платформа бронирования Madeira</p>'
+    + '<p><a href="/health">Health</a> | '
+    + '<a href="/admin">Admin</a></p>'
+    + '</body></html>'
+  );
 });
 
-/**
- * GET /cancel
- * Страница после отмены оплаты.
- */
-router.get('/cancel', (req, res) => {
-  res.send(`
-    <html>
-      <body style="font-family: sans-serif; text-align: center; padding: 50px;">
-        <h1>❌ Оплата отменена</h1>
-        <p>Вы можете вернуться и попробовать снова.</p>
-      </body>
-    </html>
-  `);
+router.get('/booking-success', async (req, res) => {
+  const sessionId = req.query.session_id;
+  let booking = null;
+
+  if (sessionId) {
+    try {
+      const r = await db.query(
+        'SELECT b.amount_cents, b.status, b.arrival_date, '
+        + 'b.departure_date, p.smoobu_id '
+        + 'FROM bookings b '
+        + 'JOIN properties p ON p.id = b.property_id '
+        + 'WHERE b.stripe_session_id = $1',
+        [sessionId]
+      );
+      if (r.rows.length) {
+        booking = r.rows[0];
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  let body = '<h2 style="color:#28a745;">'
+    + 'Оплата прошла успешно</h2>';
+
+  if (booking) {
+    const amount = (booking.amount_cents / 100).toFixed(2);
+    body += '<p>Объект: <b>' + booking.smoobu_id + '</b></p>'
+      + '<p>Даты: ' + booking.arrival_date
+      + ' — ' + booking.departure_date + '</p>'
+      + '<p>Сумма: €' + amount + '</p>'
+      + '<p>Статус: ' + booking.status + '</p>';
+  } else {
+    body += '<p>Загрузка...</p>';
+  }
+
+  body += '<p>Подтверждение придёт на email.</p>';
+
+  res.send(
+    '<html><head><meta charset="utf-8"></head>'
+    + '<body style="font-family:Arial;text-align:center;padding:40px;">'
+    + body
+    + '</body></html>'
+  );
+});
+
+router.get('/booking-cancel', (req, res) => {
+  res.send(
+    '<html><head><meta charset="utf-8"></head>'
+    + '<body style="font-family:Arial;text-align:center;padding:40px;">'
+    + '<h2>Оплата отменена</h2>'
+    + '<p>Бронь не создана. Попробуйте снова.</p>'
+    + '</body></html>'
+  );
 });
 
 module.exports = router;

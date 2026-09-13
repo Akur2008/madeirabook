@@ -1,7 +1,3 @@
-import * as smoobu from './smoobu.js';
+const smoobu = require('./smoobu');
 
-// Точка абстракции над PMS.
-// Сейчас используем Smoobu. Если в будущем перейдем на Zeevou,
-// просто поменяем импорт здесь, не трогая остальной код.
-
-export const pms = smoobu;
+module.exports = smoobu;

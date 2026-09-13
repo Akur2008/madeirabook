@@ -1,89 +1,117 @@
 const express = require('express');
-const pool = require('../../db/client');
+const db = require('../../db/client');
+const stripeSvc = require('../services/stripe');
+const pms = require('../services/pms');
+const commission = require('../services/commission');
 const config = require('../config');
-const logger = require('../logger');
-const { calculateCommission } = require('../services/commission');
-const { createCheckoutSession } = require('../services/stripe');
-const { getAvailability } = require('../services/pms');
 
 const router = express.Router();
 
-/**
- * POST /api/create-booking-and-pay
- * Создать pending-бронь + Stripe Checkout Session.
- * Цена берется ТОЛЬКО из Smoobu. Комиссия берется ТОЛЬКО из БД.
- */
 router.post('/create-booking-and-pay', async (req, res, next) => {
-  const { propertyId, guestEmail, arrivalDate, departureDate } = req.body;
-
-  if (!propertyId || !guestEmail || !arrivalDate || !departureDate) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-
   try {
-    // 1. Получить property + owner + commission
-    const { rows } = await pool.query(
-      `SELECT p.id, p.smoobu_id, p.commission_percent, p.charges_enabled,
-              o.stripe_account_id
-       FROM properties p
-       JOIN owners o ON o.id = p.owner_id
-       WHERE p.id = $1`,
-      [propertyId]
-    );
+    const propertyId = req.body.propertyId;
+    const arrivalDate = req.body.arrivalDate;
+    const departureDate = req.body.departureDate;
+    const guestEmail = req.body.guestEmail;
+    const guestName = req.body.guestName;
 
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Property not found' });
+    if (!propertyId || !arrivalDate || !departureDate || !guestEmail) {
+      return res.status(400).json({
+        error: 'Обязательные поля: propertyId, arrivalDate, '
+          + 'departureDate, guestEmail'
+      });
     }
 
-    const property = rows[0];
+    const propRes = await db.query(
+      'SELECT p.id, p.smoobu_id, p.commission_percent, '
+      + 'p.charges_enabled, o.stripe_account_id, o.id AS owner_id '
+      + 'FROM properties p JOIN owners o ON o.id = p.owner_id '
+      + 'WHERE p.smoobu_id = $1',
+      [String(propertyId)]
+    );
 
-    if (!property.charges_enabled) {
-      return res.status(400).json({ error: 'Owner has not completed Stripe onboarding' });
+    if (!propRes.rows.length) {
+      return res.status(404).json({ error: 'Объект не найден' });
     }
 
-    // 2. Получить цену из Smoobu (единственный источник правды)
-    const availability = await getAvailability(property.smoobu_id, arrivalDate, departureDate);
-    // TODO: извлечь точную цену из availability для выбранных дат.
-    // Пока — заглушка.
-    const amountCents = 10000; // €100.00
+    const prop = propRes.rows[0];
 
-    // 3. Посчитать комиссию
-    const commission = calculateCommission(amountCents, property.commission_percent);
+    if (!prop.stripe_account_id || !prop.charges_enabled) {
+      return res.status(400).json({
+        error: 'Владелец ещё не завершил верификацию Stripe'
+      });
+    }
 
-    // 4. Создать pending-бронь в БД
-    const bookingResult = await pool.query(
-      `INSERT INTO bookings
-         (property_id, stripe_session_id, amount_cents, platform_fee_cents,
-          status, guest_email, arrival_date, departure_date)
-       VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7)
-       RETURNING id`,
-      [property.id, 'temp_' + Date.now(), commission.amountCents,
-       commission.platformFeeCents, guestEmail, arrivalDate, departureDate]
+    const price = await pms.getPrice(
+      prop.smoobu_id,
+      arrivalDate,
+      departureDate
     );
-    const bookingId = bookingResult.rows[0].id;
 
-    // 5. Создать Stripe Checkout Session
-    const session = await createCheckoutSession({
-      amountCents: commission.amountCents,
-      platformFeeCents: commission.platformFeeCents,
-      stripeAccountId: property.stripe_account_id,
-      propertyId: property.id,
-      bookingId: bookingId,
-      guestEmail,
-      successUrl: `${config.APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${config.APP_URL}/cancel`,
+    const amountCents = Math.round(price * 100);
+    const platformFeeCents = commission.calcFee(
+      amountCents,
+      prop.commission_percent
+    );
+
+    const smoobuBookingId = await pms.createReservation({
+      propertyId: prop.smoobu_id,
+      arrivalDate: arrivalDate,
+      departureDate: departureDate,
+      price: price,
+      guestEmail: guestEmail,
+      guestName: guestName
     });
 
-    // 6. Обновить бронь реальным session.id
-    await pool.query(
+    const ins = await db.query(
+      'INSERT INTO bookings '
+      + '(property_id, smoobu_booking_id, amount_cents, '
+      + 'platform_fee_cents, status, source, guest_email, '
+      + 'arrival_date, departure_date) '
+      + 'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) '
+      + 'RETURNING id',
+      [
+        prop.id,
+        smoobuBookingId,
+        amountCents,
+        platformFeeCents,
+        'pending',
+        'direct',
+        guestEmail,
+        arrivalDate,
+        departureDate
+      ]
+    );
+
+    const bookingId = ins.rows[0].id;
+
+    const base = config.APP_URL;
+    const description = 'Бронирование #' + prop.smoobu_id
+      + ' (' + arrivalDate + ' — ' + departureDate + ')';
+
+    const session = await stripeSvc.createBookingCheckoutSession({
+      stripeAccountId: prop.stripe_account_id,
+      amountCents: amountCents,
+      platformFeeCents: platformFeeCents,
+      guestEmail: guestEmail,
+      description: description,
+      metadata: {
+        smoobuBookingId: String(smoobuBookingId),
+        bookingId: String(bookingId)
+      },
+      successUrl: base + '/booking-success'
+        + '?session_id={CHECKOUT_SESSION_ID}',
+      cancelUrl: base + '/booking-cancel'
+    });
+
+    await db.query(
       'UPDATE bookings SET stripe_session_id = $1 WHERE id = $2',
       [session.id, bookingId]
     );
 
-    logger.info({ bookingId, sessionId: session.id }, 'Checkout session created');
-    res.json({ checkoutUrl: session.url, bookingId });
-  } catch (err) {
-    next(err);
+    res.json({ url: session.url });
+  } catch (e) {
+    next(e);
   }
 });
 
