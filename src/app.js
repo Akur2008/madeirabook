@@ -1,51 +1,42 @@
 const express = require('express');
-const session = require('express-session');
 const pinoHttp = require('pino-http');
 const logger = require('./logger');
 const config = require('./config');
+
+// Middleware
+const authMiddleware = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
+
+// Роуты
+const adminRoutes = require('./routes/admin');
+const checkoutRoutes = require('./routes/checkout');
+const webhookRoutes = require('./routes/webhook');
+const pagesRoutes = require('./routes/pages');
 
 const app = express();
 
-// ВАЖНО: raw body для Stripe webhook ДО json
-app.use('/webhook', express.raw({ type: 'application/json' }));
-
+// 1. Логирование запросов
 app.use(pinoHttp({ logger }));
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true }));
 
-// Session для /owner
-app.use(session({
-  secret: config.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: config.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-  },
-}));
+// 2. Webhook Stripe — ОБЯЗАТЕЛЬНО raw body!
+// Этот роут должен идти ДО express.json(), иначе constructEvent не сможет проверить подпись.
+app.use('/webhook', express.raw({ type: 'application/json' }), webhookRoutes);
 
-// Health check
+// 3. Парсинг JSON для всех остальных роутов
+app.use(express.json());
+
+// 4. Health check
 app.get('/health', (req, res) => {
-  res.json({ ok: true, env: config.NODE_ENV, ts: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ROUTES (подключаются в Шаге 3):
-// app.use('/webhook', require('./routes/webhook'));
-// app.use('/admin', require('./middleware/auth'), require('./routes/admin'));
-// app.use('/owner', require('./routes/owner'));
-// app.use('/', require('./routes/checkout'));
-// app.use('/', require('./routes/pages'));
+// 5. Роуты
+app.use('/admin', authMiddleware, adminRoutes); // админка под Basic Auth
+app.use('/api', checkoutRoutes);                // API для создания брони
+app.use('/', pagesRoutes);                      // страницы успеха/отмены
 
+// 6. Обработчик ошибок — ВСЕГДА последний
 app.use(errorHandler);
 
-const PORT = config.PORT || 3000;
-if (require.main === module) {
-  app.listen(PORT, () => {
-    logger.info({ port: PORT, env: config.NODE_ENV }, 'Madeirabook started');
-  });
-}
-
+// Для Vercel Functions экспортируем app, а не запускаем listen
 module.exports = app;
