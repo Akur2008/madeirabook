@@ -101,3 +101,31 @@ CREATE TABLE IF NOT EXISTS billing_notices (
   notes         TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_billing_notices_status ON billing_notices(status);
+
+
+-- Telegram: колонка в owners
+ALTER TABLE owners ADD COLUMN IF NOT EXISTS telegram_id BIGINT UNIQUE;
+
+-- Telegram: пользователи
+CREATE TABLE IF NOT EXISTS telegram_users (
+  id          BIGSERIAL PRIMARY KEY,
+  telegram_id BIGINT UNIQUE NOT NULL,
+  chat_id     BIGINT,
+  role        TEXT NOT NULL CHECK (role IN ('guest','owner')),
+  owner_id    BIGINT REFERENCES owners(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Telegram: сессии
+CREATE TABLE IF NOT EXISTS telegram_sessions (
+  id             BIGSERIAL PRIMARY KEY,
+  telegram_id    BIGINT NOT NULL,
+  init_data_hash TEXT NOT NULL,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at     TIMESTAMPTZ NOT NULL
+);
+
+-- Индексы
+CREATE INDEX IF NOT EXISTS idx_telegram_users_tg   ON telegram_users(telegram_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_sessions_tg ON telegram_sessions(telegram_id);
+
