@@ -1,13 +1,11 @@
 const express = require('express');
 const pinoHttp = require('pino-http');
-const logger = require('./logger');
+const session = require('express-session');
 const config = require('./config');
-
-// Middleware
+const logger = require('./logger');
 const authMiddleware = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
 
-// Роуты
 const adminRoutes = require('./routes/admin');
 const checkoutRoutes = require('./routes/checkout');
 const webhookRoutes = require('./routes/webhook');
@@ -16,34 +14,54 @@ const pagesRoutes = require('./routes/pages');
 const app = express();
 
 // 1. Логирование запросов
-app.use(pinoHttp({ logger }));
+app.use(pinoHttp({ logger: logger }));
 
-// 2. Webhook Stripe — ОБЯЗАТЕЛЬНО raw body!
-// Этот роут должен идти ДО express.json(), иначе constructEvent не сможет проверить подпись.
-app.use('/webhook', express.raw({ type: 'application/json' }), webhookRoutes);
+// 2. Webhook Stripe — raw body ДО express.json()
+app.use(
+  '/webhook',
+  express.raw({ type: 'application/json' }),
+  webhookRoutes
+);
 
-// 3. Парсинг JSON для всех остальных роутов
+// 3. Парсеры для остальных роутов
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// 4. Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// 4. Session для /owner (пока не используется, но готов)
+app.use(session({
+  secret: config.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: config.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 30 * 24 * 60 * 60 * 1000
+  }
+}));
+
+// 5. Health check
+app.get('/health', function (req, res) {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
 });
 
-// 5. Роуты
-app.use('/admin', authMiddleware, adminRoutes); // админка под Basic Auth
-app.use('/api', checkoutRoutes);                // API для создания брони
-app.use('/', pagesRoutes);                      // страницы успеха/отмены
+// 6. Роуты
+app.use('/admin', authMiddleware, adminRoutes);
+app.use('/api', checkoutRoutes);
+app.use('/', pagesRoutes);
 
-// 6. Обработчик ошибок — ВСЕГДА последний
+// 7. Обработчик ошибок — ВСЕГДА последний
 app.use(errorHandler);
 
-// Для Vercel Functions экспортируем app, а не запускаем listen
-module.exports = app;
-
+// 8. Запуск сервера локально
 if (require.main === module) {
-  const PORT = process.env.PORT || 3000;
+  const PORT = config.PORT || 3000;
   app.listen(PORT, function () {
     console.log('Madeirabook started on http://localhost:' + PORT);
   });
 }
+
+module.exports = app;
