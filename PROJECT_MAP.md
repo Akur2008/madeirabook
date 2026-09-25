@@ -196,3 +196,112 @@ AI прочитает, увидит структуру, не будет пред
 3. Партнёрские объекты → Zeevou
 4. Все прямые брони через свой Stripe (12/88)
 5. Все OTA-брони — через Channel Manager того PMS, где объект
+
+---
+
+# 🚀 ФИНАЛЬНАЯ ФИКСАЦИЯ СЕССИИ 25.09.2026
+
+## ✅ Задеплоено за сессию
+- Stripe E2E: оплата → 12/88 сплит → webhook → status=paid (проверено)
+- Resend: письма от hello@madeirabook.com
+- 18 страниц с полным контентом + tours CTA
+- 2 новые: /apartamentos-do-mar, /lido-funchal
+- Sitemap 41 URL принят Google
+- Webhook Stripe endpoint: we_1UJK8b3ZmQk7WM8jecqc4jvD
+- PRICE_MOCK=500 на Vercel
+- Альяс /webhook/stripe в app.js
+
+## 🎯 ПРИОРИТЕТ #1 — Telegram Mini App (НЕ бот)
+**Пользователь прав:** нужен TMA (React-приложение внутри Telegram), не бот с кнопками.
+
+**Структура TMA:**
+- React + Vite + Tailwind → madeirabook-app.vercel.app
+- Guest TMA: одна динамическая кнопка + гид + еда + возврат
+  - Новичок: "📅 Забронировать — получите −10%"
+  - Вернулся: "🎁 Забронировать с −10%"
+  - Есть бронь: "🔔 Детали заезда — X дней"
+  - После заезда: "⭐ Оценить поездку 1–10"
+- Owner TMA: 4 плитки 2×2
+  - 🔔 Заездов сегодня
+  - 💰 Выплата (сумма + дата)
+  - 📅 Загрузка %
+  - ⭐ Рейтинг
+  - ➕ Добавить бронь
+- В боте @Madeirabookbot кнопка `web_app: { url: 'https://madeirabook-app.vercel.app' }`
+- Аутентификация через initData (Telegram WebApp)
+- Схема БД: telegram_users, telegram_sessions (уже есть)
+
+**Проверить:** @BotFather /mybots — возможно старое TMA осталось у другого бота.
+
+**Срок:** 1-2 дня.
+
+## 🎯 ПРИОРИТЕТ #2 — Booking-трафик (5000/мес)
+**Контекст:** GBP на здание "Apartamentos do Mar" (чужой отель) — льёт 5000 визитов/мес, отзывы там же. Ссылка на madeirabook.com.
+
+**Стратегия: GBP = вход, madeirabook.com = твой дом**
+
+**5 идей максимизации:**
+1. UTM-метки: `?utm_source=booking&utm_medium=listing&utm_campaign=apartamentos-do-mar`
+2. Landing `/book-direct?from=booking` — калькулятор "−10% vs Booking", CTA → Zeevou
+3. Обратный перехват: "скажите в Booking, что нашли напрямую — поздний чек-аут бесплатно"
+4. Программа возврата (Аномалия 5): бронь через Booking → письмо "−10% на следующую напрямую"
+5. Google Hotels: верифицировать официальный сайт в GBP для direct booking
+6. Если GBP заберут — своя страница + email/Telegram база уже набраны
+
+**Действия:** создать `/book-direct`, UTM в GBP, оптимизировать описание GBP.
+
+## 🎯 ПРИОРИТЕТ #3 — Бот (в процессе)
+- Работает в polling локально (3 кнопки: Book/Flights/Food)
+- Webhook на Vercel — 404/200 без ответа (grammY init issue)
+- Решение: Railway ($5/мес, постоянный процесс) вместо Vercel для бота
+- Либо lazy-init fix
+
+## 🎯 ПРИОРИТЕТ #4 — Юридические страницы
+- /privacy, /terms, cookie-banner
+- Штраф GDPR: до €20M/4%, PT: €2000+
+- Срок: 30-40 мин
+
+## 🎯 ПРИОРИТЕТ #5 — Winter Escape Radar (WOW, выходные)
+- Leaflet: 17 дуг от городов Европы до Мадейры
+- На каждой точке +4°C и €27
+- Мадейра пульсирует +22°C
+- Источники: OpenWeather (free) + Travelpayouts (PID P00321690)
+- Backend GET /api/radar, кэш 6ч
+- На главной + в TMA
+- Срок: 3-4 часа
+
+## 🎯 ПРИОРИТЕТ #6 — Save me from winter (FOMO)
+- Счётчик: "N человек искали билеты из холодной Европы"
+- Вспышки на карте = поиски за 24ч
+- В TMA живая лента покупок
+- При трафике >500/день
+
+## 🏗 АРХИТЕКТУРА (зафиксировано)
+- Бренд один: Madeirabook
+- PMS основной: Zeevou (free) — API для календаря/цен/броней
+- PMS резервный: Smoobu (свои объекты, домен apartmadeira.com)
+- Синхронизации между PMS нет — учитывать
+- Custom Domain у Zeevou (€39/мес) НЕ берём
+- Их Stripe НЕ используем — свой сплит 12/88
+- Один объект = один PMS
+- Прямые брони через свой Stripe
+- OTA через Channel Manager того PMS, где объект
+
+## 🔑 КЛЮЧЕВЫЕ ID И ДОСТУПЫ
+- Telegram bot token: 8884417047:AAH5FvkIFFERjpNArGCMqkvNro0tS3mz5vg
+- Stripe webhook endpoint: we_1UJK8b3ZmQk7WM8jecqc4jvD
+- Stripe owner test: acct_1UFyXHKdXg3Yjoq3
+- Viator PID: P00321690
+- Resend domain ID: b9358a3b-73d1-4c5d-b10a-fa910c8a9906
+- Admin: /admin (admin / change_me_min_8_chars)
+- Zeevou sandbox: sandbox.zeevou.com
+
+## 📌 ТЕКУЩИЙ МОМЕНТ (25.09 вечер)
+- Только что запушили /apartamentos-do-mar + /lido-funchal
+- Следующий шаг: TMA (React + Vite)
+- После: юр-страницы, TMA skeleton
+
+## 🎬 КАК ПРОДОЛЖИТЬ В НОВОМ ЧАТЕ
+1. Скинь этот PROJECT_MAP.md первым сообщением
+2. Напиши "Продолжаем. Старт с TMA"
+3. AI прочитает карту и начнём с Telegram Mini App
