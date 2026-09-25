@@ -42,11 +42,17 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
       });
     }
 
-    const price = await pms.getPrice(
+    let price;
+    if (process.env.PRICE_MOCK) {
+      price = parseFloat(process.env.PRICE_MOCK);
+      console.log('MOCK PRICE:', price);
+    } else {
+      price = await pms.getPrice(
       prop.smoobu_id,
       arrivalDate,
       departureDate
     );
+    }
 
     const amountCents = Math.round(price * 100);
     const platformFeeCents = commission.calcFee(
@@ -54,14 +60,13 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
       prop.commission_percent
     );
 
-    const smoobuBookingId = await pms.createReservation({
-      propertyId: prop.smoobu_id,
-      arrivalDate: arrivalDate,
-      departureDate: departureDate,
-      price: price,
-      guestEmail: guestEmail,
-      guestName: guestName
-    });
+    const smoobuBookingId = (process.env.PRICE_MOCK
+        ? 'MOCK-BOOKING-' + Date.now()
+        : await pms.createReservation({
+            propertyId: prop.smoobu_id,
+            arrivalDate: arrivalDate,
+            departureDate: departureDate
+          }))
 
     const ins = await db.query(
       'INSERT INTO bookings '
