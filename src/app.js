@@ -9,7 +9,11 @@ const errorHandler = require('./middleware/errorHandler');
 const adminRoutes = require('./routes/admin');
 const checkoutRoutes = require('./routes/checkout');
 const webhookRoutes = require('./routes/webhook');
+const subscribeRoutes = require('./routes/subscribe');
+const telegramRoutes = require('./routes/telegram');
+const ownerRoutes = require('./routes/owner');
 const pagesRoutes = require('./routes/pages');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 
@@ -24,6 +28,16 @@ app.use(
 );
 
 // 3. Парсеры для остальных роутов
+
+// CORS for public API
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -51,6 +65,12 @@ app.get('/health', function (req, res) {
 // 6. Роуты
 app.use('/admin', authMiddleware, adminRoutes);
 app.use('/api', checkoutRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/subscribe', subscribeRoutes);
+app.use('/webhook', webhookRoutes);
+app.use('/webhook/stripe', webhookRoutes);
+app.use('/webhook/telegram', telegramRoutes);
+app.use('/owner', ownerRoutes);
 app.use('/', pagesRoutes);
 
 // 7. Обработчик ошибок — ВСЕГДА последний

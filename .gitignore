@@ -142,3 +142,12 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 .vercel
+
+# macOS
+.DS_Store
+
+# tmp
+/tmp/
+
+# backups
+*.bak
