@@ -905,3 +905,37 @@ Obsidian — источник правды. GitHub — зеркало для ч�
 2. Убедиться, что КАЖДАЯ старая задача либо сделана, либо перенесена.
 3. Дописать новые задачи.
 4. Только после этого обновить файл.
+
+
+### ЭТАЛОН: страница объекта жилья (КЛЮЧЕВОЕ)
+
+Копировать с penthouse-view-ocean-canico.html. Структура обязательная:
+
+1. Хлебные крошки (nav aria-label="Breadcrumb")
+2. Заголовок H1 = название объекта
+3. Галерея фото: первое h-96, остальные сетка 2x3, все с loading="lazy"
+4. Характеристики (4 плитки: m², bedrooms, beds, guests)
+5. Кнопка "Book this [тип]" с UTM-метками в URL
+6. Блок About (3-4 абзаца)
+7. Amenities (9 плиток с эмодзи)
+8. Location (что рядом, список)
+9. Блок "Other stays in Madeira" — перелинковка на категории
+10. CTA "Ready to book?" вторая кнопка
+11. Футер стандартный
+
+Schema.org VacationRental — обязательные поля:
+- name, description, image (массив абсолютных URL)
+- address (PostalAddress)
+- geo (GeoCoordinates — точные координаты из Google Maps)
+- identifier (уникальный slug)
+- floorSize (QuantitativeValue с unitCode MTK)
+- numberOfBedrooms, numberOfBathroomsTotal
+- occupancy (QuantitativeValue, maxValue)
+- containsPlace (массив Room с occupancy.value, НЕ maxValue)
+- amenityFeature (массив LocationFeatureSpecification)
+
+Не забывать:
+- URL Zeevou deep-link: /portugal/{город}/{имя}-by-madeirabook
+- UTM: ?utm_source=madeirabook&utm_medium=site&utm_campaign=property_page
+- Папку для фото называть ТОЛЬКО маленькими буквами (Linux case-sensitive)
+- После создания страницы: python3 update-sitemap.py
