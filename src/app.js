@@ -14,6 +14,7 @@ const telegramRoutes = require('./routes/telegram');
 const ownerRoutes = require('./routes/owner');
 const pagesRoutes = require('./routes/pages');
 const authRoutes = require('./routes/auth');
+const bookingsRoutes = require('./routes/bookings');
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.get('/health', function (req, res) {
 app.use('/admin', authMiddleware, adminRoutes);
 app.use('/api', checkoutRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/bookings', bookingsRoutes);
 app.use('/api/subscribe', subscribeRoutes);
 app.use('/webhook', webhookRoutes);
 app.use('/webhook/stripe', webhookRoutes);
