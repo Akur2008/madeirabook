@@ -129,3 +129,11 @@ CREATE TABLE IF NOT EXISTS telegram_sessions (
 CREATE INDEX IF NOT EXISTS idx_telegram_users_tg   ON telegram_users(telegram_id);
 CREATE INDEX IF NOT EXISTS idx_telegram_sessions_tg ON telegram_sessions(telegram_id);
 
+
+-- ==================== MIGRATION 2026-09-26 ====================
+-- Добавляем Telegram ID гостя для связи броней с TMA-пользователями.
+ALTER TABLE bookings
+  ADD COLUMN IF NOT EXISTS guest_telegram_id BIGINT;
+
+CREATE INDEX IF NOT EXISTS idx_bookings_guest_tg
+  ON bookings(guest_telegram_id);
