@@ -1,0 +1,195 @@
+{
+  "legacy_billing_notices": [],
+  "legacy_bookings": [
+    {
+      "id": 3,
+      "property_id": 3,
+      "smoobu_booking_id": "MOCK-BOOKING-1790338977189",
+      "stripe_session_id": "cs_test_a1nzALwvBUTEawSDPlLfok4ceoUMxDH4aoZqA0j73TRPSWxqWE4eT2vUx9",
+      "stripe_payment_intent": "pi_3UJY9x3ZmQk7WM8j0XxNYIko",
+      "amount_cents": 50000,
+      "platform_fee_cents": 6000,
+      "status": "paid",
+      "source": "direct",
+      "guest_email": "akur2008@yandex.ru",
+      "arrival_date": "2026-10-14T23:00:00.000Z",
+      "departure_date": "2026-10-19T23:00:00.000Z",
+      "created_at": "2026-09-25T12:22:57.236Z",
+      "updated_at": "2026-09-25T12:23:27.323Z",
+      "guest_telegram_id": "8943470060"
+    },
+    {
+      "id": 1,
+      "property_id": 3,
+      "smoobu_booking_id": "MOCK-BOOKING-1790336589959",
+      "stripe_session_id": "cs_test_a1Qvi2YyDt3fpyxPwFIhsf3HGHy3cuEFPSDnUxyfoutw8WQmtTqQiHyb8m",
+      "stripe_payment_intent": "pi_3UJXbJ3ZmQk7WM8j114iw2WB",
+      "amount_cents": 50000,
+      "platform_fee_cents": 6000,
+      "status": "paid",
+      "source": "direct",
+      "guest_email": "akur2008@yandex.ru",
+      "arrival_date": "2026-10-14T23:00:00.000Z",
+      "departure_date": "2026-10-19T23:00:00.000Z",
+      "created_at": "2026-09-25T11:43:10.005Z",
+      "updated_at": "2026-09-25T12:48:15.544Z",
+      "guest_telegram_id": "8943470060"
+    },
+    {
+      "id": 2,
+      "property_id": 3,
+      "smoobu_booking_id": "MOCK-BOOKING-1790337755915",
+      "stripe_session_id": "cs_test_a1ELZH4BESdSzseleinz1R5OaHCTYlR93qfjOtOaKnkYXk7h4o3HZzrkqc",
+      "stripe_payment_intent": "pi_3UJXuJ3ZmQk7WM8j065P0L3S",
+      "amount_cents": 50000,
+      "platform_fee_cents": 6000,
+      "status": "paid",
+      "source": "direct",
+      "guest_email": "akur2008@yandex.ru",
+      "arrival_date": "2026-10-14T23:00:00.000Z",
+      "departure_date": "2026-10-19T23:00:00.000Z",
+      "created_at": "2026-09-25T12:02:35.961Z",
+      "updated_at": "2026-09-25T13:08:25.379Z",
+      "guest_telegram_id": "8943470060"
+    }
+  ],
+  "legacy_commission_history": [],
+  "legacy_owner_subscriptions": [],
+  "legacy_owners": [
+    {
+      "id": 7,
+      "email": "owner-test@example.com",
+      "stripe_account_id": "acct_1UJJg3KmMlLC5BQj",
+      "stripe_customer_id": null,
+      "password_hash": null,
+      "rnal": "TEST-RNAL-001",
+      "created_at": "2026-09-24T20:55:35.132Z",
+      "onboarding_token": "731f8bec-c790-451f-b218-59659cb190ae",
+      "telegram_id": null
+    },
+    {
+      "id": 8,
+      "email": "akur2013@gmail.com",
+      "stripe_account_id": "acct_1UJLwGKifrIOmTdG",
+      "stripe_customer_id": null,
+      "password_hash": null,
+      "rnal": "11111",
+      "created_at": "2026-09-24T23:20:27.633Z",
+      "onboarding_token": "cfb1b722-00af-4ba4-b95e-abd71dc6b059",
+      "telegram_id": null
+    },
+    {
+      "id": 4,
+      "email": "akur2008@yandex.ru",
+      "stripe_account_id": "acct_1UFyXHKdXg3Yjoq3",
+      "stripe_customer_id": null,
+      "password_hash": null,
+      "rnal": "1111",
+      "created_at": "2026-09-15T19:50:18.814Z",
+      "onboarding_token": "ab8f0e45-c377-4f0b-b7be-639d4694fbf7",
+      "telegram_id": null
+    }
+  ],
+  "legacy_properties": [
+    {
+      "id": 3,
+      "smoobu_id": "37726",
+      "owner_id": 4,
+      "commission_percent": "12.00",
+      "charges_enabled": true,
+      "pms": "smoobu",
+      "type": "apartment",
+      "created_at": "2026-09-15T19:50:18.814Z"
+    },
+    {
+      "id": 4,
+      "smoobu_id": "41254",
+      "owner_id": 4,
+      "commission_percent": "12.00",
+      "charges_enabled": true,
+      "pms": "smoobu",
+      "type": "apartment",
+      "created_at": "2026-09-17T18:58:31.455Z"
+    },
+    {
+      "id": 5,
+      "smoobu_id": "TEST-OWNER-001",
+      "owner_id": 7,
+      "commission_percent": "12.00",
+      "charges_enabled": false,
+      "pms": "smoobu",
+      "type": "apartment",
+      "created_at": "2026-09-24T20:55:35.132Z"
+    },
+    {
+      "id": 6,
+      "smoobu_id": "123",
+      "owner_id": 8,
+      "commission_percent": "15.00",
+      "charges_enabled": false,
+      "pms": "smoobu",
+      "type": "apartment",
+      "created_at": "2026-09-24T23:20:27.633Z"
+    },
+    {
+      "id": 7,
+      "smoobu_id": "2222",
+      "owner_id": 4,
+      "commission_percent": "10.00",
+      "charges_enabled": false,
+      "pms": "smoobu",
+      "type": "apartment",
+      "created_at": "2026-09-24T23:23:19.477Z"
+    }
+  ],
+  "legacy_subscribers": [
+    {
+      "id": 1,
+      "email": "akur2008@yandex.ru",
+      "source": "test",
+      "telegram_id": null,
+      "created_at": "2026-09-23T19:55:24.745Z"
+    },
+    {
+      "id": 5,
+      "email": "akur2013@gmail.com",
+      "source": "city_page",
+      "telegram_id": null,
+      "created_at": "2026-09-23T21:33:50.405Z"
+    },
+    {
+      "id": 9,
+      "email": "Donna156_Boyle1983@sigismail.com",
+      "source": "homepage",
+      "telegram_id": null,
+      "created_at": "2026-09-25T10:46:29.675Z"
+    },
+    {
+      "id": 10,
+      "email": "Waldo185.Halvorson_1965@sigismail.com",
+      "source": "homepage",
+      "telegram_id": null,
+      "created_at": "2026-09-25T10:46:46.067Z"
+    }
+  ],
+  "legacy_subscription_plans": [],
+  "legacy_telegram_sessions": [],
+  "legacy_telegram_users": [],
+  "legacy_webhook_events": [
+    {
+      "id": "evt_1UJY9y3ZmQk7WM8j5OWMKWqa",
+      "type": "checkout.session.completed",
+      "processed_at": "2026-09-25T12:23:27.223Z"
+    },
+    {
+      "id": "evt_1UJXbK3ZmQk7WM8jv0YvPKtV",
+      "type": "checkout.session.completed",
+      "processed_at": "2026-09-25T12:48:15.432Z"
+    },
+    {
+      "id": "evt_1UJXuL3ZmQk7WM8jU9NMr923",
+      "type": "checkout.session.completed",
+      "processed_at": "2026-09-25T13:08:25.248Z"
+    }
+  ]
+}
