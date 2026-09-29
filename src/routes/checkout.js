@@ -17,7 +17,7 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
 
     if (!propertyId || !arrivalDate || !departureDate || !guestEmail) {
       return res.status(400).json({
-        error: 'Обязательные поля: propertyId, arrivalDate, '
+        error: 'Required fields: propertyId, arrivalDate, '
           + 'departureDate, guestEmail'
       });
     }
@@ -31,14 +31,14 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
     );
 
     if (!propRes.rows.length) {
-      return res.status(404).json({ error: 'Объект не найден' });
+      return res.status(404).json({ error: 'Property not found' });
     }
 
     const prop = propRes.rows[0];
 
     if (!prop.stripe_account_id || !prop.charges_enabled) {
       return res.status(400).json({
-        error: 'Владелец ещё не завершил верификацию Stripe'
+        error: 'The owner has not completed Stripe verification yet'
       });
     }
 
@@ -91,7 +91,7 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
     const bookingId = ins.rows[0].id;
 
     const base = config.APP_URL;
-    const description = 'Бронирование #' + prop.smoobu_id
+    const description = 'Booking #' + prop.smoobu_id
       + ' (' + arrivalDate + ' — ' + departureDate + ')';
 
     const session = await stripeSvc.createBookingCheckoutSession({

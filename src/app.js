@@ -5,6 +5,7 @@ const config = require('./config');
 const logger = require('./logger');
 const authMiddleware = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
+const { localeMiddleware } = require('./i18n');
 
 const adminRoutes = require('./routes/admin');
 const checkoutRoutes = require('./routes/checkout');
@@ -68,6 +69,8 @@ app.get('/health', function (req, res) {
 
 // 6. Роуты
 app.use('/admin', authMiddleware, adminRoutes);
+// Языковой префикс ('/pt/legal/terms') снимается до публичных роутов.
+app.use(localeMiddleware);
 app.use('/api', checkoutRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingsRoutes);

@@ -2,27 +2,32 @@
 const express = require('express');
 const db = require('../../db/client');
 const { renderPage, SITE_URL, BOOKING_URL } = require('../views/layout');
+const { t } = require('../i18n');
 
 const router = express.Router();
 
 router.get('/', (req, res) => {
+  const locale = req.locale;
+
   res.send(renderPage({
-    title: 'Madeirabook — apartments and small hotels in Madeira',
-    description: 'Direct booking of apartments and small hotels in Madeira, '
-      + 'Portugal, from local hosts.',
+    locale: locale,
+    title: t(locale, 'home.title'),
+    description: t(locale, 'home.description'),
     path: '/',
-    body: '<p class="eyebrow">Madeira · all year round</p>'
-      + '<h1 class="page-title">Madeira stays, direct.</h1>'
-      + '<p class="lead">Ocean-view apartments and small hotels from local '
-      + 'hosts. Best price guaranteed. No platform fees.</p>'
+    body: '<p class="eyebrow">' + t(locale, 'home.eyebrow') + '</p>'
+      + '<h1 class="page-title">' + t(locale, 'home.heading') + '</h1>'
+      + '<p class="lead">' + t(locale, 'home.lead') + '</p>'
       + '<div class="actions">'
-      + '<a class="btn" href="' + BOOKING_URL + '">Book a stay →</a>'
-      + '<a class="btn-ghost" href="' + SITE_URL + '">Explore Madeira</a>'
+      + '<a class="btn" href="' + BOOKING_URL + '">'
+      + t(locale, 'home.book') + ' →</a>'
+      + '<a class="btn-ghost" href="' + SITE_URL + '">'
+      + t(locale, 'home.explore') + '</a>'
       + '</div>'
   }));
 });
 
 router.get('/booking-success', async (req, res) => {
+  const locale = req.locale;
   const sessionId = req.query.session_id;
   let booking = null;
 
@@ -44,49 +49,58 @@ router.get('/booking-success', async (req, res) => {
     }
   }
 
-  let body = '<p class="eyebrow">Бронирование</p>'
-    + '<p class="status status-ok">Оплата прошла успешно</p>';
+  let body = '<p class="eyebrow">' + t(locale, 'booking.eyebrow') + '</p>'
+    + '<p class="status status-ok">'
+    + t(locale, 'booking.successHeading') + '</p>';
 
   if (booking) {
     const amount = (booking.amount_cents / 100).toFixed(2);
     body += '<ul class="summary">'
-      + '<li><span>Объект</span><b>' + booking.smoobu_id + '</b></li>'
-      + '<li><span>Даты</span><b>' + booking.arrival_date
-      + ' — ' + booking.departure_date + '</b></li>'
-      + '<li><span>Сумма</span><b>€' + amount + '</b></li>'
-      + '<li><span>Статус</span><b>' + booking.status + '</b></li>'
+      + '<li><span>' + t(locale, 'booking.property') + '</span><b>'
+      + booking.smoobu_id + '</b></li>'
+      + '<li><span>' + t(locale, 'booking.dates') + '</span><b>'
+      + booking.arrival_date + ' — ' + booking.departure_date + '</b></li>'
+      + '<li><span>' + t(locale, 'booking.amount') + '</span><b>€'
+      + amount + '</b></li>'
+      + '<li><span>' + t(locale, 'booking.status') + '</span><b>'
+      + booking.status + '</b></li>'
       + '</ul>';
   } else {
-    body += '<p class="lead">Загрузка данных брони...</p>';
+    body += '<p class="lead">' + t(locale, 'booking.loading') + '</p>';
   }
 
-  body += '<p>Подтверждение придёт на email.</p>'
-    + '<div class="actions"><a class="btn-ghost" href="' + SITE_URL
-    + '">Вернуться на сайт</a></div>';
+  body += '<p>' + t(locale, 'booking.emailNote') + '</p>'
+    + '<div class="actions"><a class="btn-ghost" href="' + SITE_URL + '">'
+    + t(locale, 'booking.backToSite') + '</a></div>';
 
   res.send(renderPage({
-    title: 'Оплата прошла успешно — Madeirabook',
-    description: 'Подтверждение бронирования Madeirabook.',
+    locale: locale,
+    title: t(locale, 'booking.successTitle'),
+    description: t(locale, 'booking.successDescription'),
     path: '/booking-success',
-    lang: 'ru',
     noindex: true,
     body: body
   }));
 });
 
 router.get('/booking-cancel', (req, res) => {
+  const locale = req.locale;
+
   res.send(renderPage({
-    title: 'Оплата отменена — Madeirabook',
-    description: 'Оплата бронирования отменена.',
+    locale: locale,
+    title: t(locale, 'booking.cancelTitle'),
+    description: t(locale, 'booking.cancelDescription'),
     path: '/booking-cancel',
-    lang: 'ru',
     noindex: true,
-    body: '<p class="eyebrow">Бронирование</p>'
-      + '<p class="status status-warn">Оплата отменена</p>'
-      + '<p>Бронь не создана — деньги не списаны. Можно попробовать снова.</p>'
+    body: '<p class="eyebrow">' + t(locale, 'booking.eyebrow') + '</p>'
+      + '<p class="status status-warn">'
+      + t(locale, 'booking.cancelHeading') + '</p>'
+      + '<p>' + t(locale, 'booking.cancelNote') + '</p>'
       + '<div class="actions">'
-      + '<a class="btn" href="' + BOOKING_URL + '">Выбрать даты →</a>'
-      + '<a class="btn-ghost" href="' + SITE_URL + '">Вернуться на сайт</a>'
+      + '<a class="btn" href="' + BOOKING_URL + '">'
+      + t(locale, 'booking.chooseDates') + ' →</a>'
+      + '<a class="btn-ghost" href="' + SITE_URL + '">'
+      + t(locale, 'booking.backToSite') + '</a>'
       + '</div>'
   }));
 });
