@@ -1,19 +1,20 @@
 
 const express = require('express');
 const db = require('../../db/client');
+const { renderPage } = require('../views/layout');
 
 const router = express.Router();
 
 router.get('/', (req, res) => {
-  res.send(
-    '<html><head><meta charset="utf-8"></head>'
-    + '<body style="font-family:Arial;text-align:center;padding:40px;">'
-    + '<h1>Madeirabook</h1>'
-    + '<p>Платформа бронирования Madeira</p>'
-    + '<p><a href="/health">Health</a> | '
-    + '<a href="/admin">Admin</a></p>'
-    + '</body></html>'
-  );
+  res.send(renderPage({
+    title: 'Madeirabook — apartments and small hotels in Madeira',
+    description: 'Direct booking of apartments and small hotels in Madeira, '
+      + 'Portugal, from local hosts.',
+    path: '/',
+    body: '<h1>Madeirabook</h1>'
+      + '<p>Direct booking of apartments and small hotels in Madeira.</p>'
+      + '<p><a href="/health">Health</a> | <a href="/admin">Admin</a></p>'
+  }));
 });
 
 router.get('/booking-success', async (req, res) => {
@@ -54,22 +55,26 @@ router.get('/booking-success', async (req, res) => {
 
   body += '<p>Подтверждение придёт на email.</p>';
 
-  res.send(
-    '<html><head><meta charset="utf-8"></head>'
-    + '<body style="font-family:Arial;text-align:center;padding:40px;">'
-    + body
-    + '</body></html>'
-  );
+  res.send(renderPage({
+    title: 'Оплата прошла успешно — Madeirabook',
+    description: 'Подтверждение бронирования Madeirabook.',
+    path: '/booking-success',
+    lang: 'ru',
+    noindex: true,
+    body: body
+  }));
 });
 
 router.get('/booking-cancel', (req, res) => {
-  res.send(
-    '<html><head><meta charset="utf-8"></head>'
-    + '<body style="font-family:Arial;text-align:center;padding:40px;">'
-    + '<h2>Оплата отменена</h2>'
-    + '<p>Бронь не создана. Попробуйте снова.</p>'
-    + '</body></html>'
-  );
+  res.send(renderPage({
+    title: 'Оплата отменена — Madeirabook',
+    description: 'Оплата бронирования отменена.',
+    path: '/booking-cancel',
+    lang: 'ru',
+    noindex: true,
+    body: '<h2>Оплата отменена</h2>'
+      + '<p>Бронь не создана. Попробуйте снова.</p>'
+  }));
 });
 
 module.exports = router;
