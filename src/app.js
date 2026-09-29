@@ -15,6 +15,7 @@ const ownerRoutes = require('./routes/owner');
 const pagesRoutes = require('./routes/pages');
 const authRoutes = require('./routes/auth');
 const bookingsRoutes = require('./routes/bookings');
+const assetsRoutes = require('./routes/assets');
 const legalRoutes = require('./routes/legal');
 const seoRoutes = require('./routes/seo');
 
@@ -75,6 +76,7 @@ app.use('/webhook', webhookRoutes);
 app.use('/webhook/stripe', webhookRoutes);
 app.use('/webhook/telegram', telegramRoutes);
 app.use('/owner', ownerRoutes);
+app.use('/', assetsRoutes);
 app.use('/legal', legalRoutes);
 app.use('/', seoRoutes);
 app.use('/', pagesRoutes);

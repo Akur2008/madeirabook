@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { buildRobotsTxt, buildSitemapXml } = require('../src/seo/generate');
+const buildStyles = require('./build-css');
 
 const ROOT = path.join(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
@@ -34,9 +35,11 @@ function writeStatic() {
 }
 
 try {
+  const styles = buildStyles();
   const checked = checkSyntax();
   writeStatic();
   console.log('✅ Build OK: ' + checked + ' modules checked, '
+    + 'site.' + styles.hash + '.css (' + styles.bytes + ' bytes), '
     + 'public/robots.txt and public/sitemap.xml generated');
 } catch (e) {
   console.error('❌ Build failed:', e.message);

@@ -12,10 +12,10 @@ Object.keys(legalContent).forEach((slug) => {
       description: page.description,
       path: '/legal/' + slug,
       body: '<p class="eyebrow">Legal</p>'
-        + '<h1>' + page.title + '</h1>'
+        + '<h1 class="page-title">' + page.title + '</h1>'
         + '<p class="lead">' + page.description + '</p>'
         + '<p class="meta">Last updated: ' + page.updated + '</p>'
-        + page.body
+        + '<div class="legal-body">' + page.body + '</div>'
     }));
   });
 });

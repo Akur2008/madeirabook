@@ -12,7 +12,7 @@ router.get('/', (req, res) => {
       + 'Portugal, from local hosts.',
     path: '/',
     body: '<p class="eyebrow">Madeira · all year round</p>'
-      + '<h1>Madeira stays, direct.</h1>'
+      + '<h1 class="page-title">Madeira stays, direct.</h1>'
       + '<p class="lead">Ocean-view apartments and small hotels from local '
       + 'hosts. Best price guaranteed. No platform fees.</p>'
       + '<div class="actions">'

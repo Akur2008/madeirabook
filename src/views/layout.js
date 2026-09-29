@@ -1,6 +1,6 @@
 const config = require('../config');
 const { LEGAL_PAGES } = require('../seo/pages');
-const { styles } = require('./theme');
+const { hash } = require('./generated-styles');
 
 // Публичный контент-сайт и движок бронирования — отдельные деплои,
 // поэтому в шапке и футере на них ведут абсолютные ссылки.
@@ -8,6 +8,7 @@ const SITE_URL = 'https://madeirabook.com';
 const BOOKING_URL = 'https://madeirabook.zeevou.direct';
 const TELEGRAM_URL = 'https://t.me/Madeirabookbot';
 const CONTACT_EMAIL = 'hello@madeirabook.com';
+const STYLESHEET = '/assets/site.' + hash + '.css';
 
 const NAV_LINKS = [
   { href: SITE_URL + '/madeira-apartment-rentals.html', title: 'Stays' },
@@ -89,7 +90,7 @@ function renderPage(options) {
     + '<meta property="og:title" content="' + escapeHtml(title) + '">'
     + '<meta property="og:description" content="' + escapeHtml(description) + '">'
     + '<meta property="og:url" content="' + canonical + '">'
-    + '<style>' + styles + '</style>'
+    + '<link rel="stylesheet" href="' + STYLESHEET + '">'
     + '</head>'
     + '<body>'
     + renderHeader()
@@ -104,6 +105,7 @@ module.exports = {
   renderFooter,
   absoluteUrl,
   escapeHtml,
+  STYLESHEET,
   SITE_URL,
   BOOKING_URL
 };
