@@ -11,8 +11,10 @@ Object.keys(legalContent).forEach((slug) => {
       title: page.title + ' — Madeirabook',
       description: page.description,
       path: '/legal/' + slug,
-      body: '<h1>' + page.title + '</h1>'
-        + '<p style="color:#64748b;">Last updated: ' + page.updated + '</p>'
+      body: '<p class="eyebrow">Legal</p>'
+        + '<h1>' + page.title + '</h1>'
+        + '<p class="lead">' + page.description + '</p>'
+        + '<p class="meta">Last updated: ' + page.updated + '</p>'
         + page.body
     }));
   });
