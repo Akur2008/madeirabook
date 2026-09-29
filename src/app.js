@@ -5,6 +5,7 @@ const config = require('./config');
 const logger = require('./logger');
 const authMiddleware = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
+const { localeMiddleware } = require('./i18n');
 
 const adminRoutes = require('./routes/admin');
 const checkoutRoutes = require('./routes/checkout');
@@ -15,6 +16,9 @@ const ownerRoutes = require('./routes/owner');
 const pagesRoutes = require('./routes/pages');
 const authRoutes = require('./routes/auth');
 const bookingsRoutes = require('./routes/bookings');
+const assetsRoutes = require('./routes/assets');
+const legalRoutes = require('./routes/legal');
+const seoRoutes = require('./routes/seo');
 
 const app = express();
 
@@ -65,6 +69,8 @@ app.get('/health', function (req, res) {
 
 // 6. Роуты
 app.use('/admin', authMiddleware, adminRoutes);
+// Языковой префикс ('/pt/legal/terms') снимается до публичных роутов.
+app.use(localeMiddleware);
 app.use('/api', checkoutRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingsRoutes);
@@ -73,6 +79,9 @@ app.use('/webhook', webhookRoutes);
 app.use('/webhook/stripe', webhookRoutes);
 app.use('/webhook/telegram', telegramRoutes);
 app.use('/owner', ownerRoutes);
+app.use('/', assetsRoutes);
+app.use('/legal', legalRoutes);
+app.use('/', seoRoutes);
 app.use('/', pagesRoutes);
 
 // 7. Обработчик ошибок — ВСЕГДА последний

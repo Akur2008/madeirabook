@@ -37,10 +37,10 @@ router.get('/', async (req, res, next) => {
         + 'border:1px solid #34a853;padding:20px;'
         + 'border-radius:8px;margin-bottom:25px;">'
         + '<h3 style="margin-top:0;color:#137333;">'
-        + 'Ссылка для владельца создана</h3>'
-        + '<p>Объект: <b>'
+        + 'Owner link created</h3>'
+        + '<p>Property: <b>'
         + escapeHtml(req.query.prop || '')
-        + '</b> | Владелец: <b>'
+        + '</b> | Owner: <b>'
         + escapeHtml(req.query.email || '')
         + '</b></p>'
         + '<input id="copyInput" value="'
@@ -48,7 +48,7 @@ router.get('/', async (req, res, next) => {
         + '" readonly style="width:100%;padding:10px;">'
         + '<button onclick="navigator.clipboard.'
         + 'writeText(document.getElementById(\'copyInput\').value);'
-        + 'alert(\'Скопировано\');">Скопировать</button>'
+        + 'alert(\'Copied\');">Copy link</button>'
         + '</div>';
     }
 
@@ -59,11 +59,11 @@ router.get('/', async (req, res, next) => {
       if (r.charges_enabled) {
         kyc = '<span style="background:#28a745;color:#fff;'
           + 'padding:2px 8px;border-radius:4px;font-size:12px;">'
-          + 'Активен</span>';
+          + 'Active</span>';
       } else {
         kyc = '<span style="background:#dc3545;color:#fff;'
           + 'padding:2px 8px;border-radius:4px;font-size:12px;">'
-          + 'Не верифицирован</span>';
+          + 'Not verified</span>';
       }
       list += '<div style="background:#fff;padding:15px;'
         + 'margin-bottom:12px;border-radius:8px;'
@@ -78,12 +78,12 @@ router.get('/', async (req, res, next) => {
         + 'method="POST" style="margin-top:12px;">'
         + '<input type="hidden" name="smoobuId" value="'
         + escapeHtml(r.smoobu_id) + '">'
-        + '<label>Комиссия, %:</label> '
+        + '<label>Commission, %:</label> '
         + '<input type="number" name="commissionPercent" value="'
         + r.commission_percent
         + '" min="0" max="100" step="0.5" required '
         + 'style="width:80px;"> '
-        + '<button type="submit">Изменить</button>'
+        + '<button type="submit">Update</button>'
         + '</form></div>';
     }
 
@@ -95,13 +95,13 @@ router.get('/', async (req, res, next) => {
       + linkBox
       + '<div style="background:#fff;padding:20px;'
       + 'border-radius:8px;margin-bottom:25px;">'
-      + '<h3>Привязать объект</h3>'
+      + '<h3>Link a property</h3>'
       + '<form action="/admin/create-owner" method="POST">'
       + '<input name="smoobuId" placeholder="Smoobu ID" required '
       + 'style="display:block;padding:8px;margin-bottom:8px;'
       + 'width:100%;">'
       + '<input name="email" type="email" '
-      + 'placeholder="Email владельца" required '
+      + 'placeholder="Owner email" required '
       + 'style="display:block;padding:8px;margin-bottom:8px;'
       + 'width:100%;">'
       + '<input name="rnal" placeholder="RNAL" '
@@ -113,10 +113,10 @@ router.get('/', async (req, res, next) => {
       + 'width:100%;">'
       + '<button type="submit" style="padding:10px 20px;'
       + 'background:#635bff;color:#fff;border:none;'
-      + 'border-radius:4px;">Создать ссылку</button>'
+      + 'border-radius:4px;">Create link</button>'
       + '</form></div>'
-      + '<h3>Объекты</h3>'
-      + (list || '<p>Пусто</p>')
+      + '<h3>Properties</h3>'
+      + (list || '<p>No properties yet</p>')
       + '</body></html>';
 
     res.send(html);
@@ -135,7 +135,9 @@ router.post('/create-owner', async (req, res, next) => {
     const pct = parseFloat(req.body.commissionPercent || '12');
 
     if (!cleanEmail || !cleanPropId) {
-      return res.status(400).json({ error: 'email и smoobuId обязательны' });
+      return res.status(400).json({
+        error: 'email and smoobuId are required'
+      });
     }
 
     await client.query('BEGIN');
@@ -201,7 +203,7 @@ router.post('/create-owner', async (req, res, next) => {
       stripe_account_id: stripeAccountId,
       onboarding_token: onboardingToken,
       permalink: permalink,
-      message: 'Отправь эту ссылку владельцу — она бессрочная'
+      message: 'Send this link to the owner — it never expires'
     });
   } catch (e) {
     await client.query('ROLLBACK');
@@ -229,18 +231,18 @@ router.get('/success', async (req, res, next) => {
     );
 
     const status = account.charges_enabled
-      ? 'Активен'
-      : 'Ожидает верификации';
+      ? 'Active'
+      : 'Pending verification';
 
     res.send(
       '<html><body style="font-family:Arial;'
       + 'text-align:center;padding:40px;">'
       + '<h2 style="color:#28a745;">'
-      + 'Владелец завершил настройку</h2>'
-      + '<p>Статус: ' + status + '</p>'
+      + 'Owner finished onboarding</h2>'
+      + '<p>Status: ' + status + '</p>'
       + '<a href="/admin" style="padding:10px 20px;'
       + 'background:#635bff;color:#fff;text-decoration:none;'
-      + 'border-radius:4px;">В админку</a>'
+      + 'border-radius:4px;">Back to admin</a>'
       + '</body></html>'
     );
   } catch (e) {
@@ -278,7 +280,7 @@ router.post('/update-commission', async (req, res, next) => {
     const pct = Number(commissionPercent);
 
     if (!smoobuId || !Number.isFinite(pct) || pct < 0 || pct > 100) {
-      return res.status(400).send('Некорректные данные');
+      return res.status(400).send('Invalid input');
     }
 
     const client = await db.getClient();
@@ -293,7 +295,7 @@ router.post('/update-commission', async (req, res, next) => {
 
       if (!sel.rows.length) {
         await client.query('ROLLBACK');
-        return res.status(404).send('Объект не найден');
+        return res.status(404).send('Property not found');
       }
 
       const propertyId = sel.rows[0].id;
@@ -336,37 +338,36 @@ router.get('/owners', (req, res) => {
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 min-h-screen py-10 px-4">
-<div style="max-width:672px;margin:20px auto 0;padding:0 16px;"><a href="/admin" style="color:#10b981;font-weight:700;text-decoration:none;">← Все владельцы</a></div>
-
-<div style="max-width:900px;margin:20px auto;padding:0 20px;text-align:right;"><a href="/admin/owners" style="display:inline-block;background:#10b981;color:#fff;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;">+ Создать нового владельца</a></div>
-
+<div class="max-w-2xl mx-auto mb-6">
+  <a href="/admin" class="text-emerald-600 font-bold no-underline">← Back to admin</a>
+</div>
 
 <div class="max-w-2xl mx-auto">
   <h1 class="text-3xl font-black mb-2">Create Owner & Get Onboarding Link</h1>
-  <p class="text-slate-600 mb-8">Введи email владельца — получишь бессрочную ссылку для прохождения Stripe KYC.</p>
+  <p class="text-slate-600 mb-8">Enter the owner's email to get a permanent link for Stripe KYC onboarding.</p>
 
   <form id="owner-form" class="bg-white rounded-2xl p-6 shadow-sm">
     <div class="mb-4">
-      <label class="block text-sm font-bold mb-2">Email владельца *</label>
+      <label class="block text-sm font-bold mb-2">Owner email *</label>
       <input type="email" name="email" required placeholder="owner@example.com"
              class="w-full px-4 py-3 border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
     </div>
 
     <div class="mb-4">
-      <label class="block text-sm font-bold mb-2">ID объекта (внешний) *</label>
+      <label class="block text-sm font-bold mb-2">Property ID (external) *</label>
       <input type="text" name="smoobuId" required placeholder="37726"
              class="w-full px-4 py-3 border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
-      <p class="text-xs text-slate-500 mt-1">ID property в PMS (Smoobu / Zeevou).</p>
+      <p class="text-xs text-slate-500 mt-1">Property ID in the PMS (Smoobu / Zeevou).</p>
     </div>
 
     <div class="grid grid-cols-2 gap-4 mb-4">
       <div>
-        <label class="block text-sm font-bold mb-2">RNAL (опц.)</label>
+        <label class="block text-sm font-bold mb-2">RNAL (optional)</label>
         <input type="text" name="rnal" placeholder="12345/AL"
                class="w-full px-4 py-3 border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
       </div>
       <div>
-        <label class="block text-sm font-bold mb-2">Комиссия, %</label>
+        <label class="block text-sm font-bold mb-2">Commission, %</label>
         <input type="number" name="commissionPercent" value="12" min="0" max="100" step="0.5"
                class="w-full px-4 py-3 border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
       </div>
@@ -374,24 +375,24 @@ router.get('/owners', (req, res) => {
 
     <button type="submit" id="submit-btn"
             class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg transition">
-      Создать и получить ссылку
+      Create owner and get link
     </button>
   </form>
 
   <div id="result" class="hidden mt-6 bg-white rounded-2xl p-6 shadow-sm">
-    <div class="text-green-600 font-bold mb-3">✅ Готово</div>
+    <div class="text-green-600 font-bold mb-3">Owner created</div>
     <div class="mb-2"><strong>Owner ID:</strong> <span id="r-id"></span></div>
     <div class="mb-2"><strong>Email:</strong> <span id="r-email"></span></div>
     <div class="mb-2"><strong>Stripe account:</strong> <span id="r-acct" class="font-mono text-sm"></span></div>
-    <div class="mb-4"><strong>Комиссия:</strong> <span id="r-pct"></span>%</div>
-    <div class="mb-2"><strong>Ссылка для владельца (бессрочная):</strong></div>
+    <div class="mb-4"><strong>Commission:</strong> <span id="r-pct"></span>%</div>
+    <div class="mb-2"><strong>Owner link (never expires):</strong></div>
     <div class="flex gap-2 mb-2">
       <input type="text" id="r-link" readonly
              class="flex-1 px-3 py-2 bg-slate-50 border border-slate-300 rounded font-mono text-xs">
       <button type="button" onclick="copyLink()"
               class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-2 rounded text-sm">Copy</button>
     </div>
-    <p class="text-xs text-slate-500">Отправь эту ссылку владельцу. Она работает всегда, даже если Stripe-ссылка истекла — наша страница сгенерирует свежую.</p>
+    <p class="text-xs text-slate-500">Send this link to the owner. It keeps working even after a Stripe link expires — our page issues a fresh one.</p>
   </div>
 
   <div id="error" class="hidden mt-6 bg-rose-50 border-l-4 border-rose-500 rounded-lg p-4 text-rose-800"></div>
@@ -407,7 +408,7 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   result.classList.add('hidden');
   errorBox.classList.add('hidden');
-  btn.textContent = 'Создаю...';
+  btn.textContent = 'Creating...';
   btn.disabled = true;
 
   const fd = new FormData(form);
@@ -430,10 +431,10 @@ form.addEventListener('submit', async (e) => {
     document.getElementById('r-link').value = data.permalink;
     result.classList.remove('hidden');
   } catch (err) {
-    errorBox.textContent = '❌ ' + err.message;
+    errorBox.textContent = err.message;
     errorBox.classList.remove('hidden');
   } finally {
-    btn.textContent = 'Создать и получить ссылку';
+    btn.textContent = 'Create owner and get link';
     btn.disabled = false;
   }
 });

@@ -106,6 +106,19 @@ CREATE INDEX IF NOT EXISTS idx_billing_notices_status ON billing_notices(status)
 -- Telegram: колонка в owners
 ALTER TABLE owners ADD COLUMN IF NOT EXISTS telegram_id BIGINT UNIQUE;
 
+-- Онбординг владельца: токен для ссылки /owner/onboarding/:token
+ALTER TABLE owners ADD COLUMN IF NOT EXISTS onboarding_token TEXT UNIQUE;
+
+-- ============ SUBSCRIBERS ============
+CREATE TABLE IF NOT EXISTS subscribers (
+  id          SERIAL PRIMARY KEY,
+  email       TEXT UNIQUE NOT NULL,
+  source      TEXT NOT NULL DEFAULT 'website',
+  telegram_id BIGINT,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_subscribers_created ON subscribers(created_at);
+
 -- Telegram: пользователи
 CREATE TABLE IF NOT EXISTS telegram_users (
   id          BIGSERIAL PRIMARY KEY,

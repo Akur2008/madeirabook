@@ -21,13 +21,14 @@ bot.command('start', async (ctx) => {
 
   let intro;
   if (payload === 'pdf_guide') {
-    intro = 'Добро пожаловать в Madeirabook! 🌴\n\n' +
-      'Спасибо за подписку — ваш PDF-гид уже у вас на почте.\n\n' +
-      'Что дальше? Выберите:';
+    intro = 'Welcome to Madeirabook! 🌴\n\n' +
+      'Thanks for subscribing — your PDF guide is already in your inbox.\n\n' +
+      'What next? Choose below:';
   } else {
-    intro = 'Добро пожаловать в Madeirabook! 🌴\n\n' +
-      'Местное сообщество на Мадейре. Прямые брони от местных хозяев, без комиссий платформ.\n\n' +
-      'Выберите, что вас интересует:';
+    intro = 'Welcome to Madeirabook! 🌴\n\n' +
+      'The local community for Madeira. Direct bookings from local hosts, '
+      + 'no platform fees.\n\n' +
+      'What are you looking for?';
   }
 
   await ctx.reply(intro, { reply_markup: mainMenu() });
@@ -36,10 +37,10 @@ bot.command('start', async (ctx) => {
 // /help
 bot.command('help', async (ctx) => {
   await ctx.reply(
-    'Madeirabook — команды:\n\n' +
-    '/start — главное меню\n' +
-    '/help — эта справка\n\n' +
-    'Или просто нажмите кнопку ниже 👇',
+    'Madeirabook — commands:\n\n' +
+    '/start — main menu\n' +
+    '/help — this help\n\n' +
+    'Or just tap a button below 👇',
     { reply_markup: mainMenu() }
   );
 });
@@ -100,7 +101,7 @@ bot.callbackQuery('menu:food', async (ctx) => {
 // Кнопка по умолчанию — открыть сайт (на будущее)
 bot.on('message:text', async (ctx) => {
   await ctx.reply(
-    'Не понял команду 🤔\n\nИспользуйте /start, чтобы открыть меню.',
+    'Sorry, I did not get that 🤔\n\nSend /start to open the menu.',
     { reply_markup: mainMenu() }
   );
 });
