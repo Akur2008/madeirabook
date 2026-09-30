@@ -8,7 +8,7 @@ const schema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
 
   SMOOBU_API_KEY: z.string().min(1),
-    SMOOBU_API_SECRET: z.string().min(1),
+  SMOOBU_API_SECRET: z.string().min(1),
   TELEGRAM_BOT_TOKEN:      z.string().min(1).optional(),
   TELEGRAM_WEBHOOK_SECRET: z.string().min(1).optional(),
 

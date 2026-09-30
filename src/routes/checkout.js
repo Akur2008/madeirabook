@@ -65,7 +65,10 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
         : await pms.createReservation({
             propertyId: prop.smoobu_id,
             arrivalDate: arrivalDate,
-            departureDate: departureDate
+            departureDate: departureDate,
+            guestName: guestName,
+            guestEmail: guestEmail,
+            price: price
           }))
 
     const ins = await db.query(
