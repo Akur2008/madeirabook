@@ -6,5 +6,52 @@ export const Users: CollectionConfig = {
     useAsTitle: 'email',
   },
   auth: true,
-  fields: [],
+  fields: [
+    {
+      name: 'role',
+      type: 'select',
+      required: true,
+      defaultValue: 'owner',
+      options: [
+        { label: 'Admin', value: 'admin' },
+        { label: 'Owner', value: 'owner' },
+      ],
+    },
+    {
+      name: 'stripeAccountId',
+      type: 'text',
+      unique: true,
+    },
+    {
+      name: 'stripeCustomerId',
+      type: 'text',
+    },
+    {
+      name: 'rnal',
+      type: 'text',
+    },
+    {
+      name: 'onboardingToken',
+      type: 'text',
+      unique: true,
+    },
+    {
+      name: 'telegramId',
+      type: 'number',
+      unique: true,
+    },
+    {
+      name: 'stripeSubscriptionId',
+      type: 'text',
+      unique: true,
+    },
+    {
+      name: 'subscriptionStatus',
+      type: 'text',
+    },
+    {
+      name: 'currentPeriodEnd',
+      type: 'date',
+    },
+  ],
 }

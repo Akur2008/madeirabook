@@ -13,12 +13,12 @@ export const Properties: CollectionConfig = {
     {
       name: 'title',
       type: 'text',
-      required: true,
+      required: false,
     },
     {
       name: 'slug',
       type: 'text',
-      required: true,
+      required: false,
       unique: true,
     },
     {
@@ -33,13 +33,36 @@ export const Properties: CollectionConfig = {
       ],
     },
     {
+      name: 'smoobuId',
+      type: 'text',
+      unique: true,
+      index: true,
+    },
+    {
+      name: 'owner',
+      type: 'relationship',
+      relationTo: 'users',
+    },
+    {
+      name: 'commissionPercent',
+      type: 'number',
+      defaultValue: 12,
+      min: 0,
+      max: 100,
+    },
+    {
+      name: 'chargesEnabled',
+      type: 'checkbox',
+      defaultValue: false,
+    },
+    {
       name: 'pmsPropertyId',
       type: 'text',
     },
     {
       name: 'pricePerNight',
       type: 'number',
-      required: true,
+      required: false,
     },
     {
       name: 'cleaningFee',

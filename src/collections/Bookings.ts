@@ -4,7 +4,7 @@ export const Bookings: CollectionConfig = {
   slug: 'bookings',
   admin: {
     useAsTitle: 'guestEmail',
-    defaultColumns: ['property', 'checkIn', 'checkOut', 'status', 'totalPrice', 'createdAt'],
+    defaultColumns: ['property', 'arrivalDate', 'departureDate', 'status', 'amountCents', 'createdAt'],
   },
   access: {
     read: ({ req: { user } }) => Boolean(user),
@@ -31,13 +31,13 @@ export const Bookings: CollectionConfig = {
       type: 'email',
     },
     {
-      name: 'checkIn',
+      name: 'arrivalDate',
       type: 'date',
       required: true,
       admin: { date: { pickerAppearance: 'dayOnly' } },
     },
     {
-      name: 'checkOut',
+      name: 'departureDate',
       type: 'date',
       required: true,
       admin: { date: { pickerAppearance: 'dayOnly' } },
@@ -67,7 +67,7 @@ export const Bookings: CollectionConfig = {
       ],
     },
     {
-      name: 'totalPrice',
+      name: 'amountCents',
       type: 'number',
       required: true,
       min: 0,
