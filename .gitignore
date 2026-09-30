@@ -151,3 +151,6 @@ vite.config.ts.timestamp-*
 
 # backups
 *.bak
+# Локальные тесты и анализ
+test-*.js
+zeevou_*.txt
