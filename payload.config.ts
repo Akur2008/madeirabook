@@ -16,6 +16,6 @@ export default buildConfig({
   globals: [CookiePolicy, PrivacyPolicy, TermsOfService, LegalInfo],
   db: postgresAdapter({
     pool: { connectionString: process.env.DATABASE_URL || '' },
-    push: true,
+    push: false,
   }),
 })
