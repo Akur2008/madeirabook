@@ -9,12 +9,14 @@
     "migrate": "node db/migrate.js"
   },
   "dependencies": {
+    "@payloadcms/db-postgres": "3.90.2",
     "axios": "^1.7.7",
     "bcrypt": "^5.1.1",
     "dotenv": "^17.4.2",
     "express": "^4.21.0",
     "express-session": "^1.18.0",
     "grammy": "^1.46.0",
+    "payload": "3.90.2",
     "pg": "^8.13.0",
     "pino": "^9.4.0",
     "pino-http": "^10.3.0",
