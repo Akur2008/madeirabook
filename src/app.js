@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const pinoHttp = require('pino-http');
 const session = require('express-session');
 const config = require('./config');
@@ -51,6 +52,7 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/tma', express.static(path.join(__dirname, '..', 'public', 'tma')));
 
 // 4. Session для /owner (пока не используется, но готов)
 app.use(session({

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Madeirabook</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="app.js"></script>
+</head>
+<body>
+  <h1>Mini App works</h1>
+  <pre id="out"></pre>
+  <script>
+    (function () {
+      var out = document.getElementById('out');
+      function log(line) {
+        console.log(line);
+        out.textContent += line + '\n';
+      }
+
+      var webApp = tg();
+      if (!webApp) {
+        log('Not in Telegram');
+        return;
+      }
+
+      webApp.ready();
+      var user = webApp.initDataUnsafe && webApp.initDataUnsafe.user;
+      log('initData length: ' + initData().length);
+      log('user id: ' + (user ? user.id : 'none'));
+    })();
+  </script>
+</body>
+</html>
