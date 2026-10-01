@@ -94,23 +94,32 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
     const description = 'Бронирование #' + prop.smoobu_id
       + ' (' + arrivalDate + ' — ' + departureDate + ')';
 
-    const session = await stripeSvc.createBookingCheckoutSession({
-      stripeAccountId: prop.stripe_account_id,
-      amountCents: amountCents,
-      platformFeeCents: platformFeeCents,
-      guestEmail: guestEmail,
-      description: description,
-      metadata: {
-        smoobuBookingId: String(smoobuBookingId),
-        bookingId: String(bookingId)
-      },
-      successUrl: base + '/booking-success'
-        + '?session_id={CHECKOUT_SESSION_ID}',
-      cancelUrl: base + '/booking-cancel'
-    });
+    let session;
+    try {
+      session = await stripeSvc.createBookingCheckoutSession({
+        stripeAccountId: prop.stripe_account_id,
+        amountCents: amountCents,
+        platformFeeCents: platformFeeCents,
+        guestEmail: guestEmail,
+        description: description,
+        metadata: {
+          smoobuBookingId: String(smoobuBookingId),
+          bookingId: String(bookingId)
+        },
+        successUrl: base + '/booking-success'
+          + '?session_id={CHECKOUT_SESSION_ID}',
+        cancelUrl: base + '/booking-cancel'
+      });
+    } catch (stripeErr) {
+      await db.query(
+        'UPDATE bookings SET status = $1, updated_at = NOW() WHERE id = $2',
+        ['cancelled', bookingId]
+      );
+      throw stripeErr;
+    }
 
     await db.query(
-      'UPDATE bookings SET stripe_session_id = $1 WHERE id = $2',
+      'UPDATE bookings SET stripe_session_id = $1, updated_at = NOW() WHERE id = $2',
       [session.id, bookingId]
     );
 
