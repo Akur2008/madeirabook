@@ -14,7 +14,7 @@ router.get('/onboarding/:token', async (req, res, next) => {
     }
 
     const ownerRes = await db.query(
-      'SELECT id, email, stripe_account_id FROM owners WHERE onboarding_token = $1',
+      'SELECT id, email, stripe_account_id FROM users WHERE onboarding_token = $1',
       [token]
     );
 

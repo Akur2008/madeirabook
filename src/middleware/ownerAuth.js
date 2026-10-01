@@ -7,7 +7,7 @@ async function requireOwner(req, res, next) {
   }
   try {
     const r = await db.query(
-      `SELECT id, email, rnal FROM owners WHERE id = $1`,
+      `SELECT id, email, rnal FROM users WHERE id = $1`,
       [req.session.ownerId]
     );
     if (!r.rows.length) {
@@ -21,6 +21,8 @@ async function requireOwner(req, res, next) {
   }
 }
 
+// TODO: пароли владельцев теперь в Payload-auth (users.hash/salt, pbkdf2).
+// bcrypt-хелперы с ним несовместимы и пока нигде не вызываются.
 async function hashPassword(password) {
   return bcrypt.hash(password, 10);
 }

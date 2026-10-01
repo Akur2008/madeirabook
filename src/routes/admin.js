@@ -26,7 +26,7 @@ router.get('/', async (req, res, next) => {
       + 'p.charges_enabled, o.id AS owner_id, '
       + 'o.email AS owner_email, o.stripe_account_id, '
       + 'o.rnal FROM properties p '
-      + 'JOIN owners o ON o.id = p.owner_id '
+      + 'JOIN users o ON o.id = p.owner_id '
       + 'ORDER BY p.created_at DESC';
     const result = await db.query(q);
     const rows = result.rows;
@@ -141,7 +141,7 @@ router.post('/create-owner', async (req, res, next) => {
     await client.query('BEGIN');
 
     // 1. Ищем существующего owner
-    let ownerRes = await client.query('SELECT id, stripe_account_id FROM owners WHERE email = $1', [cleanEmail]);
+    let ownerRes = await client.query('SELECT id, stripe_account_id FROM users WHERE email = $1', [cleanEmail]);
     let ownerId;
     let stripeAccountId;
     let onboardingToken;
@@ -152,16 +152,16 @@ router.post('/create-owner', async (req, res, next) => {
       // Генерируем токен если его нет
       const t = require('crypto').randomUUID();
       await client.query(
-        'UPDATE owners SET onboarding_token = COALESCE(onboarding_token, $1), rnal = $2 WHERE id = $3',
+        'UPDATE users SET onboarding_token = COALESCE(onboarding_token, $1), rnal = $2 WHERE id = $3',
         [t, rnal, ownerId]
       );
-      const tr = await client.query('SELECT onboarding_token FROM owners WHERE id = $1', [ownerId]);
+      const tr = await client.query('SELECT onboarding_token FROM users WHERE id = $1', [ownerId]);
       onboardingToken = tr.rows[0].onboarding_token;
     } else {
       // Создаём нового owner
       const t = require('crypto').randomUUID();
       const ins = await client.query(
-        'INSERT INTO owners (email, rnal, onboarding_token) VALUES ($1, $2, $3) RETURNING id, onboarding_token',
+        'INSERT INTO users (email, rnal, onboarding_token) VALUES ($1, $2, $3) RETURNING id, onboarding_token',
         [cleanEmail, rnal, t]
       );
       ownerId = ins.rows[0].id;
@@ -172,7 +172,7 @@ router.post('/create-owner', async (req, res, next) => {
     if (!stripeAccountId) {
       const account = await stripeSvc.createExpressAccount(cleanEmail);
       stripeAccountId = account.id;
-      await client.query('UPDATE owners SET stripe_account_id = $1 WHERE id = $2', [stripeAccountId, ownerId]);
+      await client.query('UPDATE users SET stripe_account_id = $1 WHERE id = $2', [stripeAccountId, ownerId]);
     }
 
     // 3. Привязываем property
@@ -223,7 +223,7 @@ router.get('/success', async (req, res, next) => {
 
     await db.query(
       'UPDATE properties p SET charges_enabled = $1 '
-      + 'FROM owners o WHERE p.owner_id = o.id '
+      + 'FROM users o WHERE p.owner_id = o.id '
       + 'AND o.stripe_account_id = $2',
       [account.charges_enabled, accountId]
     );

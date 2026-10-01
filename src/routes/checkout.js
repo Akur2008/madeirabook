@@ -25,7 +25,7 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
     const propRes = await db.query(
       'SELECT p.id, p.smoobu_id, p.commission_percent, '
       + 'p.charges_enabled, o.stripe_account_id, o.id AS owner_id '
-      + 'FROM properties p JOIN owners o ON o.id = p.owner_id '
+      + 'FROM properties p JOIN users o ON o.id = p.owner_id '
       + 'WHERE p.smoobu_id = $1',
       [String(propertyId)]
     );

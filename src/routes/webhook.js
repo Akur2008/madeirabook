@@ -37,7 +37,7 @@ router.post('/', async (req, res) => {
       const acc = event.data.object;
       await db.query(
         'UPDATE properties p SET charges_enabled = $1 '
-        + 'FROM owners o WHERE p.owner_id = o.id '
+        + 'FROM users o WHERE p.owner_id = o.id '
         + 'AND o.stripe_account_id = $2',
         [acc.charges_enabled, acc.id]
       );
