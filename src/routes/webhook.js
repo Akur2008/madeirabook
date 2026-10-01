@@ -64,10 +64,12 @@ router.post('/', async (req, res) => {
       const row = upd.rows[0];
       if (row && row.smoobu_booking_id) {
         try {
-          await pms.markPaid(row.smoobu_booking_id);
+          const pmsRes = await pms.markPaid(row.smoobu_booking_id);
           logger.info(
             { smoobuBookingId: row.smoobu_booking_id },
-            'marked paid in Smoobu'
+            pmsRes && pmsRes.mock
+              ? 'SMOOBU_MOCK: markPaid skipped'
+              : 'marked paid in Smoobu'
           );
         } catch (smoobuErr) {
           logger.error(
@@ -87,10 +89,12 @@ router.post('/', async (req, res) => {
       const row = upd.rows[0];
       if (row && row.smoobu_booking_id) {
         try {
-          await pms.cancelReservation(row.smoobu_booking_id);
+          const pmsRes = await pms.cancelReservation(row.smoobu_booking_id);
           logger.info(
             { smoobuBookingId: row.smoobu_booking_id },
-            'cancelled in Smoobu (session expired)'
+            pmsRes && pmsRes.mock
+              ? 'SMOOBU_MOCK: cancelReservation skipped (session expired)'
+              : 'cancelled in Smoobu (session expired)'
           );
         } catch (smoobuErr) {
           logger.error(
@@ -110,10 +114,12 @@ router.post('/', async (req, res) => {
       const row = upd.rows[0];
       if (row && row.smoobu_booking_id) {
         try {
-          await pms.cancelReservation(row.smoobu_booking_id);
+          const pmsRes = await pms.cancelReservation(row.smoobu_booking_id);
           logger.info(
             { smoobuBookingId: row.smoobu_booking_id },
-            'cancelled in Smoobu (refunded)'
+            pmsRes && pmsRes.mock
+              ? 'SMOOBU_MOCK: cancelReservation skipped (refunded)'
+              : 'cancelled in Smoobu (refunded)'
           );
         } catch (smoobuErr) {
           logger.error(
