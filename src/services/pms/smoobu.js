@@ -146,6 +146,9 @@ async function createReservation(p) {
  * Отметить бронь оплаченной.
  */
 async function markPaid(smoobuBookingId) {
+  if (process.env.SMOOBU_MOCK === 'true') {
+    return { ok: true, mock: true };
+  }
   return smoobuRequest('PUT', `/api/reservations/${smoobuBookingId}`, { paid: true });
 }
 
