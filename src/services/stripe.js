@@ -36,6 +36,14 @@ function constructWebhookEvent(rawBody, signature) {
 }
 
 async function createBookingCheckoutSession(opts) {
+  if (process.env.STRIPE_MOCK === 'true') {
+    var mockId = 'cs_mock_' + Date.now();
+    return {
+      id: mockId,
+      url: 'http://localhost:3000/mock-checkout?session_id=' + mockId
+    };
+  }
+
   var lineItems = [{
     price_data: {
       currency: 'eur',

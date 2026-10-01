@@ -9,10 +9,17 @@ const router = express.Router();
 router.post('/', async (req, res) => {
   let event;
   try {
-    event = stripeSvc.constructWebhookEvent(
-      req.body,
-      req.headers['stripe-signature']
-    );
+    if (process.env.STRIPE_MOCK === 'true') {
+      // STRIPE_MOCK: подпись не проверяется, только для dev.
+      event = Buffer.isBuffer(req.body)
+        ? JSON.parse(req.body.toString('utf8'))
+        : req.body;
+    } else {
+      event = stripeSvc.constructWebhookEvent(
+        req.body,
+        req.headers['stripe-signature']
+      );
+    }
   } catch (e) {
     logger.warn({ err: e.message }, 'webhook signature failed');
     return res.status(400).send('Webhook Error: ' + e.message);
