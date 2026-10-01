@@ -4,7 +4,6 @@ const { Resend } = require('resend');
 const db = require('../../db/client');
 
 const router = express.Router();
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const subscribeSchema = z.object({
   email: z.string().email(),
@@ -14,6 +13,11 @@ const subscribeSchema = z.object({
 router.post('/', async (req, res) => {
   try {
     const { email, source } = subscribeSchema.parse(req.body);
+
+    if (!process.env.RESEND_API_KEY) {
+      return res.status(503).json({ error: 'Email service not configured' });
+    }
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
     await db.query(
       'INSERT INTO subscribers (email, source) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING',
