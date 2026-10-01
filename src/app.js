@@ -19,7 +19,17 @@ const bookingsRoutes = require('./routes/bookings');
 const app = express();
 
 // 1. Логирование запросов
-app.use(pinoHttp({ logger: logger }));
+app.use(pinoHttp({
+  logger: logger,
+  redact: {
+    paths: [
+      'req.headers["x-telegram-init-data"]',
+      'req.headers.authorization',
+      'req.headers["stripe-signature"]'
+    ],
+    remove: true
+  }
+}));
 
 // 2. Webhook Stripe — raw body ДО express.json()
 app.use(
