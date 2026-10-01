@@ -3,6 +3,7 @@ const db = require('../../db/client');
 const stripeSvc = require('../services/stripe');
 const pms = require('../services/pms');
 const commission = require('../services/commission');
+const telegramAuth = require('../services/telegramAuth');
 const config = require('../config');
 
 const router = express.Router();
@@ -14,6 +15,16 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
     const departureDate = req.body.departureDate;
     const guestEmail = req.body.guestEmail;
     const guestName = req.body.guestName;
+
+    let guestTelegramId = null;
+    const initDataHeader = req.headers['x-telegram-init-data'];
+    if (initDataHeader) {
+      const result = telegramAuth.validateInitData(initDataHeader);
+      if (!result) {
+        return res.status(401).json({ ok: false, error: 'invalid_init_data' });
+      }
+      guestTelegramId = result.user.id;
+    }
 
     if (!propertyId || !arrivalDate || !departureDate || !guestEmail) {
       return res.status(400).json({
@@ -72,8 +83,8 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
       'INSERT INTO bookings '
       + '(property_id, smoobu_booking_id, amount_cents, '
       + 'platform_fee_cents, status, source, guest_email, '
-      + 'arrival_date, departure_date) '
-      + 'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) '
+      + 'arrival_date, departure_date, guest_telegram_id) '
+      + 'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) '
       + 'RETURNING id',
       [
         prop.id,
@@ -84,7 +95,8 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
         'direct',
         guestEmail,
         arrivalDate,
-        departureDate
+        departureDate,
+        guestTelegramId
       ]
     );
 
