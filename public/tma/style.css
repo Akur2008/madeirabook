@@ -22,3 +22,37 @@ pre {
   background: var(--tg-theme-secondary-bg-color, #f2f2f2);
   border-radius: 8px;
 }
+
+#list {
+  margin-bottom: 12px;
+}
+
+.booking {
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--tg-theme-secondary-bg-color, #f2f2f2);
+}
+
+.booking-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.booking-status {
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.booking-status-paid {
+  color: #2e7d32;
+}
+
+.booking-status-pending {
+  color: #b26a00;
+}
+
+.booking-status-cancelled,
+.booking-status-refunded {
+  color: var(--tg-theme-hint-color, #888);
+}

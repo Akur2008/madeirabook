@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Мои брони</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="app.js"></script>
+</head>
+<body>
+  <h1>Мои брони</h1>
+  <div id="list">Список броней</div>
+  <pre id="out"></pre>
+  <script>
+    (function () {
+      var list = document.getElementById('list');
+      var out = document.getElementById('out');
+
+      var STATUS_LABELS = {
+        pending: 'Ожидает',
+        paid: 'Оплачено',
+        cancelled: 'Отменено',
+        refunded: 'Возврат'
+      };
+
+      function debug(line) {
+        console.log(line);
+        out.textContent += line + '\n';
+      }
+
+      function formatDate(value) {
+        return value ? String(value).slice(0, 10) : '—';
+      }
+
+      function line(text, className) {
+        var el = document.createElement('div');
+        if (className) el.className = className;
+        el.textContent = text;
+        return el;
+      }
+
+      function renderBooking(b) {
+        var card = document.createElement('div');
+        card.className = 'booking';
+        card.appendChild(line('Бронь #' + b.id, 'booking-title'));
+        card.appendChild(line('Объект: ' + b.property_id));
+        card.appendChild(line('Заезд: ' + formatDate(b.arrival_date)
+          + ' — ' + formatDate(b.departure_date)));
+        card.appendChild(line('Сумма: ' + (b.amount_cents / 100).toFixed(2) + ' €'));
+        card.appendChild(line('Статус: ' + (STATUS_LABELS[b.status] || b.status),
+          'booking-status booking-status-' + b.status));
+        return card;
+      }
+
+      async function load() {
+        var webApp = tg();
+        if (webApp) webApp.ready();
+
+        try {
+          var res = await apiFetch('/api/bookings/my');
+
+          if (res.status === 401) {
+            list.textContent = 'Не удалось авторизоваться в Telegram';
+            return;
+          }
+
+          if (!res.ok || !res.data || !Array.isArray(res.data.bookings)) {
+            list.textContent = 'Не удалось загрузить брони';
+            debug('HTTP ' + res.status + ': '
+              + ((res.data && res.data.error) || 'unexpected response'));
+            return;
+          }
+
+          var bookings = res.data.bookings;
+          if (bookings.length === 0) {
+            list.textContent = 'У вас ещё нет броней';
+            return;
+          }
+
+          list.textContent = '';
+          bookings.forEach(function (b) {
+            list.appendChild(renderBooking(b));
+          });
+        } catch (e) {
+          list.textContent = 'Не удалось загрузить брони';
+          debug('Ошибка: ' + e.message);
+        }
+      }
+
+      load();
+    })();
+  </script>
+</body>
+</html>
