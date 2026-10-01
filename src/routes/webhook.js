@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../../db/client');
 const stripeSvc = require('../services/stripe');
 const pms = require('../services/pms');
+const telegramNotify = require('../services/telegramNotify');
 const logger = require('../logger');
 
 const router = express.Router();
@@ -58,7 +59,7 @@ router.post('/', async (req, res) => {
         'UPDATE bookings SET status = $1, '
         + 'stripe_payment_intent = $2, updated_at = NOW() '
         + 'WHERE stripe_session_id = $3 '
-        + 'RETURNING smoobu_booking_id',
+        + 'RETURNING id, smoobu_booking_id',
         ['paid', s.payment_intent, s.id]
       );
       const row = upd.rows[0];
@@ -75,6 +76,38 @@ router.post('/', async (req, res) => {
           logger.error(
             { err: smoobuErr.message },
             'smoobu markPaid failed'
+          );
+        }
+      }
+      if (row) {
+        try {
+          const info = await db.query(
+            'SELECT b.arrival_date, p.title, b.guest_telegram_id '
+            + 'FROM bookings b '
+            + 'LEFT JOIN properties p ON p.id = b.property_id '
+            + 'WHERE b.id = $1',
+            [row.id]
+          );
+          const g = info.rows[0];
+          if (!g || !g.guest_telegram_id) {
+            logger.info('no telegram guest for booking ' + row.id);
+          } else {
+            const arrival = new Date(g.arrival_date).toISOString().slice(0, 10);
+            const text = 'Ваша бронь ' + row.id
+              + (g.title ? ' (' + g.title + ')' : '')
+              + ' оплачена. Заезд ' + arrival + '.';
+            const tgRes = await telegramNotify.sendMessage(g.guest_telegram_id, text);
+            logger.info(
+              { bookingId: row.id, text: text },
+              tgRes && tgRes.mock
+                ? 'TELEGRAM_MOCK: message sent to ' + g.guest_telegram_id
+                : 'telegram message sent to ' + g.guest_telegram_id
+            );
+          }
+        } catch (tgErr) {
+          logger.error(
+            { err: tgErr.message, bookingId: row.id },
+            'telegram notify failed'
           );
         }
       }
