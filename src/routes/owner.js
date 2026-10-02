@@ -240,9 +240,12 @@ router.get('/', requireOwner, async (req, res, next) => {
       <h1 class="text-2xl font-black">Owner cabinet</h1>
       <p class="text-slate-500 text-sm">${ownerEscapeHtml(req.owner.email)}</p>
     </div>
-    <form method="POST" action="/owner/logout">
-      <button type="submit" class="text-sm text-slate-500 hover:text-slate-800">Sign out</button>
-    </form>
+    <div class="flex items-center gap-3">
+      <a href="/owner/connect-stripe" class="text-sm font-medium text-emerald-700 hover:text-emerald-900">Manage payouts</a>
+      <form method="POST" action="/owner/logout">
+        <button type="submit" class="text-sm text-slate-500 hover:text-slate-800">Sign out</button>
+      </form>
+    </div>
   </div>
   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
     <table class="w-full text-left">
@@ -261,5 +264,30 @@ router.get('/', requireOwner, async (req, res, next) => {
   }
 });
 
+
+
+// Owner-initiated Stripe Connect onboarding
+router.get("/connect-stripe", requireOwner, async (req, res, next) => {
+  try {
+    let accountId = req.owner.stripe_account_id;
+    if (!accountId) {
+      const account = await stripeSvc.createExpressAccount(req.owner.email);
+      accountId = account.id;
+      await db.query("UPDATE users SET stripe_account_id = $1 WHERE id = $2", [accountId, req.owner.id]);
+      logger.info({ ownerId: req.owner.id, accountId: accountId }, "stripe express account created");
+    }
+
+    const baseUrl = process.env.APP_URL || (req.protocol + "://" + req.get("host"));
+    const link = await stripeSvc.createOnboardingLink(
+      accountId,
+      baseUrl + "/owner/onboarding-complete",
+      baseUrl + "/owner/connect-stripe"
+    );
+
+    return res.redirect(303, link.url);
+  } catch (e) {
+    next(e);
+  }
+});
 
 module.exports = router;

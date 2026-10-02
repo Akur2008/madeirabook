@@ -7,7 +7,7 @@ async function requireOwner(req, res, next) {
   }
   try {
     const r = await db.query(
-      `SELECT id, email, rnal FROM users WHERE id = $1`,
+      `SELECT id, email, rnal, stripe_account_id FROM users WHERE id = $1`,
       [req.session.ownerId]
     );
     if (!r.rows.length) {
