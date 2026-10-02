@@ -309,4 +309,51 @@ router.get('/legal/privacy-policy', legalHandler('privacy_policy', 'Privacy Poli
 router.get('/legal/terms-of-service', legalHandler('terms_of_service', 'Terms of Service'));
 
 
+
+// === SEO: robots.txt & sitemap.xml ===
+
+router.get('/robots.txt', (req, res) => {
+  const base = (process.env.APP_URL || 'https://madeirabook-core.vercel.app').replace(/\/$/, '');
+  res.type('text/plain').send(
+    'User-agent: *\n'
+    + 'Allow: /\n'
+    + 'Disallow: /owner/\n'
+    + 'Disallow: /admin\n'
+    + 'Disallow: /api/\n'
+    + 'Disallow: /webhook\n'
+    + '\n'
+    + 'Sitemap: ' + base + '/sitemap.xml\n'
+  );
+});
+
+router.get('/sitemap.xml', async (req, res, next) => {
+  try {
+    const base = (process.env.APP_URL || 'https://madeirabook-core.vercel.app').replace(/\/$/, '');
+    const r = await db.query("SELECT slug, updated_at FROM properties WHERE status = 'published' ORDER BY id DESC");
+    const props = r.rows;
+
+    let urls = '';
+    urls += '  <url><loc>' + base + '/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n';
+    for (const p of props) {
+      const lastmod = p.updated_at ? new Date(p.updated_at).toISOString().slice(0, 10) : '';
+      urls += '  <url><loc>' + base + '/p/' + encodeURIComponent(p.slug) + '</loc>'
+        + (lastmod ? '<lastmod>' + lastmod + '</lastmod>' : '')
+        + '<changefreq>weekly</changefreq><priority>0.9</priority></url>\n';
+    }
+    urls += '  <url><loc>' + base + '/legal/cookie-policy</loc><priority>0.3</priority></url>\n';
+    urls += '  <url><loc>' + base + '/legal/privacy-policy</loc><priority>0.3</priority></url>\n';
+    urls += '  <url><loc>' + base + '/legal/terms-of-service</loc><priority>0.3</priority></url>\n';
+
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+      + urls
+      + '</urlset>';
+
+    res.type('application/xml').send(xml);
+  } catch (e) {
+    next(e);
+  }
+});
+
+
 module.exports = router;
