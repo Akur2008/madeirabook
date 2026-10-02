@@ -85,7 +85,7 @@ router.get('/p/:slug', async (req, res, next) => {
   try {
     const slug = req.params.slug;
     const r = await db.query(
-      'SELECT id, slug, title, smoobu_id, price_per_night, cleaning_fee, ' +
+      'SELECT id, slug, title, description, smoobu_id, price_per_night, cleaning_fee, ' +
       'location_id, status, charges_enabled ' +
       'FROM properties WHERE slug = $1 LIMIT 1',
       [slug]
@@ -111,7 +111,8 @@ router.get('/p/:slug', async (req, res, next) => {
 <div class="max-w-2xl mx-auto px-6 py-12">
   <a href="/" class="text-sm text-slate-500 hover:text-slate-800">&larr; Madeirabook</a>
   <h1 class="text-3xl font-black mt-4 mb-2">${esc(p.title)}</h1>
-  <p class="text-slate-500 mb-6">${priceEuro} &euro; / night &middot; cleaning ${cleaning} &euro;</p>
+  <p class="text-slate-500 mb-4">${priceEuro} &euro; / night &middot; cleaning ${cleaning} &euro;</p>
+  ${p.description ? '<p class="text-slate-700 leading-relaxed mb-6 whitespace-pre-line">' + esc(p.description) + '</p>' : '<div class="mb-6"></div>'}
 
   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
     <h2 class="text-lg font-bold mb-4">Book this property</h2>

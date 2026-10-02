@@ -284,6 +284,7 @@ router.get('/', requireOwner, async (req, res, next) => {
       <p class="text-slate-500 text-sm">${ownerEscapeHtml(req.owner.email)}</p>
     </div>
     <div class="flex items-center gap-3">
+      <a href="/owner/properties/new" class="text-sm font-medium text-emerald-700 hover:text-emerald-900">+ Add property</a>
       <a href="/owner/connect-stripe" class="text-sm font-medium text-emerald-700 hover:text-emerald-900">Manage payouts</a>
       <form method="POST" action="/owner/logout">
         <button type="submit" class="text-sm text-slate-500 hover:text-slate-800">Sign out</button>
@@ -346,6 +347,91 @@ router.get('/', requireOwner, async (req, res, next) => {
 
 
 // Owner-initiated Stripe Connect onboarding
+
+// === ADD PROPERTY ===
+
+function slugify(title) {
+  return String(title).toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
+
+router.get('/properties/new', requireOwner, (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add property — Madeirabook</title>
+<script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-slate-50 min-h-screen p-6">
+<div class="max-w-2xl mx-auto">
+  <a href="/owner" class="text-sm text-slate-500 hover:text-slate-800">&larr; Owner cabinet</a>
+  <h1 class="text-2xl font-black mt-4 mb-6">Add a property</h1>
+  <form method="POST" action="/owner/properties/new" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+    <div>
+      <label class="block text-xs uppercase text-slate-500 mb-1">Title *</label>
+      <input type="text" name="title" required maxlength="120" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+    </div>
+    <div>
+      <label class="block text-xs uppercase text-slate-500 mb-1">Description</label>
+      <textarea name="description" rows="5" maxlength="4000" class="w-full rounded-lg border border-slate-300 px-3 py-2"></textarea>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Price per night (EUR) *</label>
+        <input type="number" name="pricePerNight" min="1" step="1" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Cleaning fee (EUR)</label>
+        <input type="number" name="cleaningFee" min="0" step="1" value="0" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+    </div>
+    <div>
+      <label class="block text-xs uppercase text-slate-500 mb-1">PMS property ID (Smoobu ID, optional)</label>
+      <input type="text" name="smoobuId" maxlength="80" class="w-full rounded-lg border border-slate-300 px-3 py-2" placeholder="например, 12345 или test-smoobu-1">
+      <p class="text-xs text-slate-400 mt-1">Если не указать — объект появится, но бронирование будет недоступно до подключения PMS.</p>
+    </div>
+    <button type="submit" class="w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3">Create property</button>
+  </form>
+</div>
+</body></html>`);
+});
+
+router.post('/properties/new', requireOwner, async (req, res, next) => {
+  try {
+    const title = ((req.body && req.body.title) || '').trim();
+    const description = ((req.body && req.body.description) || '').trim() || null;
+    const price = parseFloat(req.body && req.body.pricePerNight);
+    const cleaning = parseFloat(req.body && req.body.cleaningFee) || 0;
+    const smoobuId = ((req.body && req.body.smoobuId) || '').trim() || null;
+
+    if (!title || !isFinite(price) || price <= 0) {
+      return res.status(400).send('Title and price are required');
+    }
+
+    let slug = slugify(title);
+    if (!slug) slug = 'property';
+    let attempt = 0;
+    while (true) {
+      const check = await db.query('SELECT 1 FROM properties WHERE slug = $1', [slug]);
+      if (!check.rows.length) break;
+      attempt++;
+      slug = slugify(title) + '-' + attempt;
+      if (attempt > 50) { slug = slugify(title) + '-' + Date.now(); break; }
+    }
+
+    await db.query(
+      `INSERT INTO properties (title, slug, description, price_per_night, cleaning_fee, smoobu_id, owner_id, commission_percent, status, charges_enabled, brand)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 12, 'published', false, 'madeirabook')`,
+      [title, slug, description, price, cleaning, smoobuId, req.owner.id]
+    );
+
+    logger.info({ ownerId: req.owner.id, slug: slug }, 'property created');
+    res.redirect(303, '/owner');
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.get("/connect-stripe", requireOwner, async (req, res, next) => {
   try {
     let accountId = req.owner.stripe_account_id;

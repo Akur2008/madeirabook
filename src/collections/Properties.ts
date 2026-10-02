@@ -22,6 +22,10 @@ export const Properties: CollectionConfig = {
       unique: true,
     },
     {
+      name: 'description',
+      type: 'textarea',
+    },
+    {
       name: 'brand',
       type: 'select',
       required: true,
