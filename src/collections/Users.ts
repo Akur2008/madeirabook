@@ -53,5 +53,16 @@ export const Users: CollectionConfig = {
       name: 'currentPeriodEnd',
       type: 'date',
     },
+    {
+      name: 'loginToken',
+      type: 'text',
+      unique: true,
+      admin: { hidden: true },
+    },
+    {
+      name: 'loginTokenExpiresAt',
+      type: 'date',
+      admin: { hidden: true },
+    },
   ],
 }
