@@ -3,6 +3,7 @@ const db = require('../../db/client');
 const stripeSvc = require('../services/stripe');
 const pms = require('../services/pms');
 const telegramNotify = require('../services/telegramNotify');
+const emailNotify = require('../services/emailNotify');
 const logger = require('../logger');
 
 const router = express.Router();
@@ -108,6 +109,38 @@ router.post('/', async (req, res) => {
           logger.error(
             { err: tgErr.message, bookingId: row.id },
             'telegram notify failed'
+          );
+        }
+      }
+      if (row) {
+        try {
+          const info2 = await db.query(
+            'SELECT b.arrival_date, b.departure_date, b.guest_email, b.amount_cents, '
+            + 'b.platform_fee_cents, p.title AS property_title, '
+            + 'u.email AS owner_email '
+            + 'FROM bookings b '
+            + 'LEFT JOIN properties p ON p.id = b.property_id '
+            + 'LEFT JOIN users u ON u.id = p.owner_id '
+            + 'WHERE b.id = $1',
+            [row.id]
+          );
+          const info2Row = info2.rows[0];
+          if (info2Row) {
+            await emailNotify.sendBookingPaid({
+              bookingId: row.id,
+              guestEmail: info2Row.guest_email,
+              ownerEmail: info2Row.owner_email,
+              propertyTitle: info2Row.property_title,
+              arrivalDate: info2Row.arrival_date,
+              departureDate: info2Row.departure_date,
+              amountCents: info2Row.amount_cents,
+              platformFeeCents: info2Row.platform_fee_cents
+            });
+          }
+        } catch (emailErr) {
+          logger.error(
+            { err: emailErr.message, bookingId: row.id },
+            'booking email notify failed'
           );
         }
       }
