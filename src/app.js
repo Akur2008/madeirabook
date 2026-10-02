@@ -14,6 +14,7 @@ const subscribeRoutes = require('./routes/subscribe');
 const telegramRoutes = require('./routes/telegram');
 const ownerRoutes = require('./routes/owner');
 const pagesRoutes = require('./routes/pages');
+const oasisRoutes = require('./routes/oasis');
 const authRoutes = require('./routes/auth');
 const bookingsRoutes = require('./routes/bookings');
 
@@ -67,6 +68,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/tma', express.static(path.join(__dirname, '..', 'public', 'tma')));
+app.use('/oasis-static', express.static(path.join(__dirname, '..', 'public', 'oasis')));
 
 // 4. Session для /owner (cookie-session: подписанная кука, без серверного store)
 app.use(session({
@@ -96,6 +98,7 @@ app.use('/webhook', webhookRoutes);
 app.use('/webhook/stripe', webhookRoutes);
 app.use('/webhook/telegram', telegramRoutes);
 app.use('/owner', ownerRoutes);
+app.use('/oasis', oasisRoutes);
 app.use('/', pagesRoutes);
 
 // 7. Обработчик ошибок — ВСЕГДА последний
