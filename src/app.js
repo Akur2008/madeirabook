@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const pinoHttp = require('pino-http');
-const session = require('express-session');
+const session = require('cookie-session');
 const config = require('./config');
 const logger = require('./logger');
 const authMiddleware = require('./middleware/auth');
@@ -55,17 +55,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/tma', express.static(path.join(__dirname, '..', 'public', 'tma')));
 
-// 4. Session для /owner (пока не используется, но готов)
+// 4. Session для /owner (cookie-session: подписанная кука, без серверного store)
 app.use(session({
-  secret: config.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: config.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 30 * 24 * 60 * 60 * 1000
-  }
+  name: 'mb.sid',
+  keys: [config.SESSION_SECRET],
+  maxAge: 30 * 24 * 60 * 60 * 1000,
+  secure: config.NODE_ENV === 'production',
+  httpOnly: true,
+  sameSite: 'lax'
 }));
 
 // 5. Health check

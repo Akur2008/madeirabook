@@ -195,22 +195,15 @@ router.get('/auth/:token', async (req, res, next) => {
     );
 
     req.session.ownerId = user.id;
-    req.session.save(function () {
-      res.redirect(303, '/owner');
-    });
+    res.redirect(303, '/owner');
   } catch (e) {
     next(e);
   }
 });
 
 router.post('/logout', (req, res) => {
-  if (req.session) {
-    req.session.destroy(function () {
-      res.redirect(303, '/owner/login');
-    });
-  } else {
-    res.redirect(303, '/owner/login');
-  }
+  req.session = null;
+  res.redirect(303, '/owner/login');
 });
 
 router.get('/', requireOwner, async (req, res, next) => {

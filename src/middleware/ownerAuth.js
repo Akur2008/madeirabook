@@ -11,7 +11,7 @@ async function requireOwner(req, res, next) {
       [req.session.ownerId]
     );
     if (!r.rows.length) {
-      req.session.destroy(() => {});
+      req.session = null;
       return res.redirect('/owner/login');
     }
     req.owner = r.rows[0];
