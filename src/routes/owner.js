@@ -255,7 +255,7 @@ router.get('/', requireOwner, async (req, res, next) => {
         + '<td class="px-4 py-3 font-mono text-sm">' + ownerEscapeHtml(p.smoobu_id || '\u2014') + '</td>'
         + '<td class="px-4 py-3">' + ownerEscapeHtml(p.commission_percent || '\u2014') + '%</td>'
         + '<td class="px-4 py-3">' + (p.charges_enabled ? '<span class="text-emerald-600">&#9679;</span> Active' : '<span class="text-slate-400">&#9679;</span> Pending') + '</td>'
-        + '<td class="px-4 py-3"><a href="/owner/properties/' + p.id + '/media" class="text-sm text-emerald-700 hover:underline">Photos</a></td>'
+        + '<td class="px-4 py-3"><a href="/owner/properties/' + p.id + '/edit" class="text-sm text-emerald-700 hover:underline">Edit</a> &middot; <a href="/owner/properties/' + p.id + '/media" class="text-sm text-emerald-700 hover:underline">Photos</a></td>'
         + '</tr>';
     }
 
@@ -507,6 +507,153 @@ router.post('/properties/:id/media/:mediaId/delete', requireOwner, async (req, r
     await db.query('DELETE FROM media WHERE id = $1', [mid]);
 
     res.redirect(303, '/owner/properties/' + pid + '/media');
+  } catch (e) {
+    next(e);
+  }
+});
+
+
+// === EDIT / DELETE PROPERTY ===
+
+router.get('/properties/:id/edit', requireOwner, async (req, res, next) => {
+  try {
+    const pid = parseInt(req.params.id, 10);
+    if (!pid) return res.status(400).send('Invalid id');
+
+    const r = await db.query(
+      'SELECT id, title, slug, description, price_per_night, cleaning_fee, smoobu_id, status FROM properties WHERE id = $1 AND owner_id = $2',
+      [pid, req.owner.id]
+    );
+    if (!r.rows.length) return res.status(404).send('Property not found');
+    const p = r.rows[0];
+
+    const flash = req.query.saved === '1' ? '<div class="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm px-4 py-3">Saved.</div>' : '';
+    const err = req.query.err ? '<div class="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3">' + ownerEscapeHtml(req.query.err) + '</div>' : '';
+
+    res.send(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit — ${ownerEscapeHtml(p.title)} — Madeirabook</title>
+<script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-slate-50 min-h-screen p-6">
+<div class="max-w-2xl mx-auto">
+  <a href="/owner" class="text-sm text-slate-500 hover:text-slate-800">&larr; Owner cabinet</a>
+  <h1 class="text-2xl font-black mt-4 mb-1">Edit property</h1>
+  <p class="text-slate-500 text-sm mb-6">Slug: <span class="font-mono">${ownerEscapeHtml(p.slug)}</span></p>
+
+  ${flash}${err}
+
+  <form method="POST" action="/owner/properties/${pid}/edit" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+    <div>
+      <label class="block text-xs uppercase text-slate-500 mb-1">Title *</label>
+      <input type="text" name="title" required maxlength="120" value="${ownerEscapeHtml(p.title)}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+    </div>
+    <div>
+      <label class="block text-xs uppercase text-slate-500 mb-1">Description</label>
+      <textarea name="description" rows="5" maxlength="4000" class="w-full rounded-lg border border-slate-300 px-3 py-2">${ownerEscapeHtml(p.description || '')}</textarea>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Price per night (EUR) *</label>
+        <input type="number" name="pricePerNight" min="1" step="1" required value="${p.price_per_night != null ? Number(p.price_per_night) : ''}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Cleaning fee (EUR)</label>
+        <input type="number" name="cleaningFee" min="0" step="1" value="${p.cleaning_fee != null ? Number(p.cleaning_fee) : 0}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+    </div>
+    <div>
+      <label class="block text-xs uppercase text-slate-500 mb-1">PMS property ID (Smoobu ID, optional)</label>
+      <input type="text" name="smoobuId" maxlength="80" value="${ownerEscapeHtml(p.smoobu_id || '')}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+    </div>
+    <div>
+      <label class="block text-xs uppercase text-slate-500 mb-1">Status</label>
+      <select name="status" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        <option value="published" ${p.status === 'published' ? 'selected' : ''}>Published</option>
+        <option value="draft" ${p.status === 'draft' ? 'selected' : ''}>Draft</option>
+      </select>
+    </div>
+    <div class="flex items-center gap-3">
+      <button type="submit" class="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6">Save</button>
+      <a href="/owner/properties/${pid}/media" class="text-sm text-emerald-700 hover:underline">Manage photos</a>
+      <a href="/p/${ownerEscapeHtml(p.slug)}" target="_blank" class="text-sm text-slate-500 hover:underline">View public page &rarr;</a>
+    </div>
+  </form>
+
+  <form method="POST" action="/owner/properties/${pid}/delete" onsubmit="return confirm('Delete this property and all its photos? This cannot be undone.');" class="mt-6">
+    <button type="submit" class="text-sm text-red-600 hover:underline">Delete property</button>
+  </form>
+</div>
+</body></html>`);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/properties/:id/edit', requireOwner, async (req, res, next) => {
+  try {
+    const pid = parseInt(req.params.id, 10);
+    if (!pid) return res.status(400).send('Invalid id');
+
+    const own = await db.query('SELECT id FROM properties WHERE id = $1 AND owner_id = $2', [pid, req.owner.id]);
+    if (!own.rows.length) return res.status(404).send('Property not found');
+
+    const title = ((req.body && req.body.title) || '').trim();
+    const description = ((req.body && req.body.description) || '').trim() || null;
+    const price = parseFloat(req.body && req.body.pricePerNight);
+    const cleaning = parseFloat(req.body && req.body.cleaningFee) || 0;
+    const smoobuId = ((req.body && req.body.smoobuId) || '').trim() || null;
+    const status = req.body && req.body.status === 'draft' ? 'draft' : 'published';
+
+    if (!title || !isFinite(price) || price <= 0) {
+      return res.redirect(303, '/owner/properties/' + pid + '/edit?err=' + encodeURIComponent('Title and price are required'));
+    }
+
+    await db.query(
+      'UPDATE properties SET title = $1, description = $2, price_per_night = $3, cleaning_fee = $4, smoobu_id = $5, status = $6, updated_at = NOW() WHERE id = $7',
+      [title, description, price, cleaning, smoobuId, status, pid]
+    );
+
+    logger.info({ ownerId: req.owner.id, propertyId: pid }, 'property updated');
+    res.redirect(303, '/owner/properties/' + pid + '/edit?saved=1');
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/properties/:id/delete', requireOwner, async (req, res, next) => {
+  try {
+    const pid = parseInt(req.params.id, 10);
+    if (!pid) return res.status(400).send('Invalid id');
+
+    const own = await db.query('SELECT id FROM properties WHERE id = $1 AND owner_id = $2', [pid, req.owner.id]);
+    if (!own.rows.length) return res.status(404).send('Property not found');
+
+    // Удаляем blob-файлы
+    const mediaRes = await db.query(
+      'SELECT m.id, m.url FROM properties_media pm JOIN media m ON m.id = pm.image_id WHERE pm._parent_id = $1',
+      [pid]
+    );
+    for (const m of mediaRes.rows) {
+      if (m.url) {
+        try { await del(m.url); } catch (e) { logger.warn({ err: e.message }, 'blob delete failed'); }
+      }
+    }
+    await db.query('DELETE FROM media WHERE id IN (SELECT image_id FROM properties_media WHERE _parent_id = $1)', [pid]);
+    await db.query('DELETE FROM properties_media WHERE _parent_id = $1', [pid]);
+    await db.query('DELETE FROM properties_rels WHERE parent_id = $1', [pid]);
+    await db.query('DELETE FROM properties_audio_tracks WHERE _parent_id = $1', [pid]);
+
+    // Если есть брони — не удаляем объект, а прячем (draft)
+    const bk = await db.query('SELECT COUNT(*) c FROM bookings WHERE property_id = $1', [pid]);
+    if (parseInt(bk.rows[0].c, 10) > 0) {
+      await db.query("UPDATE properties SET status = 'draft' WHERE id = $1", [pid]);
+      logger.info({ propertyId: pid }, 'property has bookings, hidden as draft');
+    } else {
+      await db.query('DELETE FROM properties WHERE id = $1', [pid]);
+      logger.info({ propertyId: pid }, 'property deleted');
+    }
+
+    res.redirect(303, '/owner');
   } catch (e) {
     next(e);
   }
