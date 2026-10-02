@@ -18,6 +18,7 @@ const authRoutes = require('./routes/auth');
 const bookingsRoutes = require('./routes/bookings');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // 1. Логирование запросов
 app.use(pinoHttp({
