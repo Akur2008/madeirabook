@@ -8,6 +8,7 @@ import { Locations } from './src/collections/Locations.ts'
 import { Media } from './src/collections/Media.ts'
 import { Properties } from './src/collections/Properties.ts'
 import { Subscribers } from './src/collections/Subscribers.ts'
+import { FlightRoutes } from './src/payload/collections/FlightRoutes.ts'
 import { Users } from './src/collections/Users.ts'
 import { WebhookEvents } from './src/collections/WebhookEvents.ts'
 import { CookiePolicy, PrivacyPolicy, TermsOfService, LegalInfo } from './src/globals/LegalPages.ts'
@@ -25,6 +26,7 @@ export default buildConfig({
     WebhookEvents,
     CommissionHistory,
     Subscribers,
+    FlightRoutes,
   ],
   globals: [CookiePolicy, PrivacyPolicy, TermsOfService, LegalInfo],
   db: postgresAdapter({
