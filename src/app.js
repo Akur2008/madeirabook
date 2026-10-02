@@ -20,6 +20,19 @@ const bookingsRoutes = require('./routes/bookings');
 const app = express();
 app.set('trust proxy', 1);
 
+// Google Search Console verification — inject meta tag into every HTML <head>
+const GOOGLE_VERIFICATION_META = '<meta name="google-site-verification" content="wBnvYKjLFebuB-VZa2eMTy6IRRNzYs8x_oXgv0TkBO8" />';
+app.use((req, res, next) => {
+  const originalSend = res.send.bind(res);
+  res.send = function (body) {
+    if (typeof body === 'string' && body.indexOf('</head>') !== -1 && body.indexOf('google-site-verification') === -1) {
+      body = body.replace('</head>', '  ' + GOOGLE_VERIFICATION_META + '\n</head>');
+    }
+    return originalSend(body);
+  };
+  next();
+});
+
 // 1. Логирование запросов
 app.use(pinoHttp({
   logger: logger,
