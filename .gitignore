@@ -154,3 +154,6 @@ vite.config.ts.timestamp-*
 # Локальные тесты и анализ
 test-*.js
 zeevou_*.txt
+payload-types.ts
+tmp-cols.js
+.env*

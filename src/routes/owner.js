@@ -5,6 +5,8 @@ const logger = require('../logger');
 const crypto = require('crypto');
 const { Resend } = require('resend');
 const { requireOwner } = require('../middleware/ownerAuth');
+const multer = require('multer');
+const { put, del } = require('@vercel/blob');
 
 const router = express.Router();
 
@@ -253,6 +255,7 @@ router.get('/', requireOwner, async (req, res, next) => {
         + '<td class="px-4 py-3 font-mono text-sm">' + ownerEscapeHtml(p.smoobu_id || '\u2014') + '</td>'
         + '<td class="px-4 py-3">' + ownerEscapeHtml(p.commission_percent || '\u2014') + '%</td>'
         + '<td class="px-4 py-3">' + (p.charges_enabled ? '<span class="text-emerald-600">&#9679;</span> Active' : '<span class="text-slate-400">&#9679;</span> Pending') + '</td>'
+        + '<td class="px-4 py-3"><a href="/owner/properties/' + p.id + '/media" class="text-sm text-emerald-700 hover:underline">Photos</a></td>'
         + '</tr>';
     }
 
@@ -311,10 +314,10 @@ router.get('/', requireOwner, async (req, res, next) => {
   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
     <table class="w-full text-left">
       <thead class="bg-slate-50 text-xs uppercase text-slate-500">
-        <tr><th class="px-4 py-3">Property</th><th class="px-4 py-3">Commission</th><th class="px-4 py-3">Status</th></tr>
+        <tr><th class="px-4 py-3">Property</th><th class="px-4 py-3">Commission</th><th class="px-4 py-3">Status</th><th class="px-4 py-3"></th></tr>
       </thead>
       <tbody>
-        ${propRows || '<tr><td colspan="3" class="px-4 py-8 text-center text-slate-400">No properties yet</td></tr>'}
+        ${propRows || '<tr><td colspan="4" class="px-4 py-8 text-center text-slate-400">No properties yet</td></tr>'}
       </tbody>
     </table>
   </div>
@@ -347,6 +350,167 @@ router.get('/', requireOwner, async (req, res, next) => {
 
 
 // Owner-initiated Stripe Connect onboarding
+
+
+// === PROPERTY MEDIA ===
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 4 * 1024 * 1024, files: 10 }
+});
+
+router.get('/properties/:id/media', requireOwner, async (req, res, next) => {
+  try {
+    const pid = parseInt(req.params.id, 10);
+    if (!pid) return res.status(400).send('Invalid id');
+
+    const propRes = await db.query(
+      'SELECT id, title, slug FROM properties WHERE id = $1 AND owner_id = $2',
+      [pid, req.owner.id]
+    );
+    if (!propRes.rows.length) return res.status(404).send('Property not found');
+    const prop = propRes.rows[0];
+
+    const mediaRes = await db.query(
+      `SELECT m.id, m.url, m.filename, m.alt, pm._order
+       FROM properties_media pm
+       JOIN media m ON m.id = pm.image_id
+       WHERE pm._parent_id = $1
+       ORDER BY pm._order`,
+      [pid]
+    );
+
+    let imgs = '';
+    for (const m of mediaRes.rows) {
+      imgs += '<div class="bg-white rounded-xl border border-slate-200 p-2">'
+        + '<img src="' + ownerEscapeHtml(m.url) + '" class="w-full h-40 object-cover rounded-lg">'
+        + '<p class="text-xs text-slate-500 mt-2 truncate">' + ownerEscapeHtml(m.filename || '') + '</p>'
+        + '<form method="POST" action="/owner/properties/' + pid + '/media/' + m.id + '/delete" class="mt-2">'
+        + '<button type="submit" class="text-xs text-red-600 hover:underline">Delete</button>'
+        + '</form>'
+        + '</div>';
+    }
+
+    const flash = req.query.uploaded === '1' ? '<div class="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm px-4 py-3">Photos uploaded.</div>' : '';
+    const err = req.query.err ? '<div class="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3">' + ownerEscapeHtml(req.query.err) + '</div>' : '';
+
+    res.send(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photos — ${ownerEscapeHtml(prop.title)} — Madeirabook</title>
+<script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-slate-50 min-h-screen p-6">
+<div class="max-w-4xl mx-auto">
+  <a href="/owner" class="text-sm text-slate-500 hover:text-slate-800">&larr; Owner cabinet</a>
+  <h1 class="text-2xl font-black mt-4 mb-1">Photos</h1>
+  <p class="text-slate-500 text-sm mb-6">${ownerEscapeHtml(prop.title)}</p>
+
+  ${flash}${err}
+
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+    <form method="POST" action="/owner/properties/${pid}/media" enctype="multipart/form-data">
+      <label class="block text-xs uppercase text-slate-500 mb-2">Add photos (max 10, up to 4 MB each)</label>
+      <input type="file" name="photos" accept="image/*" multiple required class="block w-full text-sm mb-4">
+      <button type="submit" class="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6">Upload</button>
+    </form>
+  </div>
+
+  <h2 class="text-sm uppercase font-bold text-slate-500 mb-2">Current photos</h2>
+  <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+    ${imgs || '<p class="text-slate-400 text-sm col-span-full">No photos yet</p>'}
+  </div>
+
+  <div class="mt-8">
+    <a href="/p/${ownerEscapeHtml(prop.slug)}" class="text-sm text-emerald-700 hover:underline">View public page &rarr;</a>
+  </div>
+</div>
+</body></html>`);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/properties/:id/media', requireOwner, upload.array('photos', 10), async (req, res, next) => {
+  const pid = parseInt(req.params.id, 10);
+  try {
+    if (!pid) return res.status(400).send('Invalid id');
+
+    const propRes = await db.query(
+      'SELECT id FROM properties WHERE id = $1 AND owner_id = $2',
+      [pid, req.owner.id]
+    );
+    if (!propRes.rows.length) return res.status(404).send('Property not found');
+
+    if (!req.files || !req.files.length) {
+      return res.redirect(303, '/owner/properties/' + pid + '/media?err=No+files+received');
+    }
+
+    const maxOrderRes = await db.query(
+      'SELECT COALESCE(MAX(_order), -1) AS m FROM properties_media WHERE _parent_id = $1',
+      [pid]
+    );
+    let order = maxOrderRes.rows[0].m + 1;
+
+    for (const f of req.files) {
+      if (!f.mimetype || !f.mimetype.startsWith('image/')) continue;
+
+      const ext = (f.originalname.split('.').pop() || 'jpg').toLowerCase();
+      const safeName = 'properties/' + pid + '/' + Date.now() + '-' + crypto.randomBytes(4).toString('hex') + '.' + ext;
+
+      const blob = await put(safeName, f.buffer, {
+        access: 'public',
+        contentType: f.mimetype,
+        addRandomSuffix: false
+      });
+
+      const mediaIns = await db.query(
+        'INSERT INTO media (alt, url, filename, mime_type, filesize) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        [f.originalname, blob.url, f.originalname, f.mimetype, f.size]
+      );
+      const mediaId = mediaIns.rows[0].id;
+
+      await db.query(
+        'INSERT INTO properties_media (_order, _parent_id, id, image_id) VALUES ($1, $2, $3, $4)',
+        [order++, pid, crypto.randomUUID(), mediaId]
+      );
+    }
+
+    logger.info({ ownerId: req.owner.id, propertyId: pid, count: req.files.length }, 'property media uploaded');
+    res.redirect(303, '/owner/properties/' + pid + '/media?uploaded=1');
+  } catch (e) {
+    logger.error({ err: e.message, propertyId: pid }, 'property media upload failed');
+    res.redirect(303, '/owner/properties/' + pid + '/media?err=' + encodeURIComponent(e.message));
+  }
+});
+
+router.post('/properties/:id/media/:mediaId/delete', requireOwner, async (req, res, next) => {
+  try {
+    const pid = parseInt(req.params.id, 10);
+    const mid = parseInt(req.params.mediaId, 10);
+    if (!pid || !mid) return res.status(400).send('Invalid id');
+
+    const own = await db.query(
+      'SELECT id FROM properties WHERE id = $1 AND owner_id = $2',
+      [pid, req.owner.id]
+    );
+    if (!own.rows.length) return res.status(404).send('Property not found');
+
+    const m = await db.query('SELECT url FROM media WHERE id = $1', [mid]);
+    if (m.rows.length && m.rows[0].url) {
+      try {
+        await del(m.rows[0].url);
+      } catch (delErr) {
+        logger.warn({ err: delErr.message }, 'blob delete failed (continuing)');
+      }
+    }
+
+    await db.query('DELETE FROM properties_media WHERE _parent_id = $1 AND image_id = $2', [pid, mid]);
+    await db.query('DELETE FROM media WHERE id = $1', [mid]);
+
+    res.redirect(303, '/owner/properties/' + pid + '/media');
+  } catch (e) {
+    next(e);
+  }
+});
 
 // === ADD PROPERTY ===
 
@@ -425,8 +589,14 @@ router.post('/properties/new', requireOwner, async (req, res, next) => {
       [title, slug, description, price, cleaning, smoobuId, req.owner.id]
     );
 
+    const insRes = await db.query('SELECT id FROM properties WHERE slug = $1', [slug]);
     logger.info({ ownerId: req.owner.id, slug: slug }, 'property created');
-    res.redirect(303, '/owner');
+    const newId = insRes.rows[0] ? insRes.rows[0].id : null;
+    if (newId) {
+      res.redirect(303, '/owner/properties/' + newId + '/media');
+    } else {
+      res.redirect(303, '/owner');
+    }
   } catch (e) {
     next(e);
   }

@@ -102,6 +102,27 @@ router.get('/p/:slug', async (req, res, next) => {
     const priceEuro = p.price_per_night ? Number(p.price_per_night).toFixed(0) : '—';
     const cleaning = p.cleaning_fee ? Number(p.cleaning_fee).toFixed(0) : '0';
 
+    const mediaRes = await db.query(
+      'SELECT m.url, m.alt FROM properties_media pm '
+      + 'JOIN media m ON m.id = pm.image_id '
+      + 'WHERE pm._parent_id = $1 ORDER BY pm._order',
+      [p.id]
+    );
+    const photos = mediaRes.rows;
+
+    let gallery = '';
+    if (photos.length) {
+      const first = photos[0];
+      gallery = '<div class="mb-6"><img src="' + esc(first.url) + '" alt="' + esc(first.alt || p.title) + '" class="w-full rounded-2xl shadow-sm object-cover max-h-96"></div>';
+      if (photos.length > 1) {
+        gallery += '<div class="grid grid-cols-3 gap-2 mb-6">';
+        for (let i = 1; i < photos.length; i++) {
+          gallery += '<img src="' + esc(photos[i].url) + '" alt="' + esc(photos[i].alt || p.title) + '" class="w-full h-24 object-cover rounded-lg">';
+        }
+        gallery += '</div>';
+      }
+    }
+
     res.send(`<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -110,6 +131,8 @@ router.get('/p/:slug', async (req, res, next) => {
 </head><body class="bg-slate-50 min-h-screen">
 <div class="max-w-2xl mx-auto px-6 py-12">
   <a href="/" class="text-sm text-slate-500 hover:text-slate-800">&larr; Madeirabook</a>
+  <div class="mt-4"></div>
+  ${gallery}
   <h1 class="text-3xl font-black mt-4 mb-2">${esc(p.title)}</h1>
   <p class="text-slate-500 mb-4">${priceEuro} &euro; / night &middot; cleaning ${cleaning} &euro;</p>
   ${p.description ? '<p class="text-slate-700 leading-relaxed mb-6 whitespace-pre-line">' + esc(p.description) + '</p>' : '<div class="mb-6"></div>'}
