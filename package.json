@@ -13,6 +13,7 @@
     "@payloadcms/db-postgres": "3.90.2",
     "axios": "^1.7.7",
     "bcrypt": "^5.1.1",
+    "cookie-session": "^2.1.1",
     "dotenv": "^17.4.2",
     "express": "^4.21.0",
     "express-session": "^1.18.0",
