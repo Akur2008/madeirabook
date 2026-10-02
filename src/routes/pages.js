@@ -72,4 +72,114 @@ router.get('/booking-cancel', (req, res) => {
   );
 });
 
+
+// === GUEST PROPERTY PAGE ===
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+router.get('/p/:slug', async (req, res, next) => {
+  try {
+    const slug = req.params.slug;
+    const r = await db.query(
+      'SELECT id, slug, title, smoobu_id, price_per_night, cleaning_fee, ' +
+      'location_id, status, charges_enabled ' +
+      'FROM properties WHERE slug = $1 LIMIT 1',
+      [slug]
+    );
+    if (!r.rows.length) {
+      return res.status(404).send('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Not found</title>'
+        + '<script src="https://cdn.tailwindcss.com"></script></head>'
+        + '<body class="bg-slate-50 min-h-screen flex items-center justify-center px-6">'
+        + '<div class="text-center"><h1 class="text-4xl font-black mb-2">404</h1>'
+        + '<p class="text-slate-500 mb-4">Property not found</p>'
+        + '<a href="/" class="text-emerald-600 hover:underline">Go home</a></div></body></html>');
+    }
+    const p = r.rows[0];
+    const priceEuro = p.price_per_night ? Number(p.price_per_night).toFixed(0) : '—';
+    const cleaning = p.cleaning_fee ? Number(p.cleaning_fee).toFixed(0) : '0';
+
+    res.send(`<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(p.title)} — Madeirabook</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head><body class="bg-slate-50 min-h-screen">
+<div class="max-w-2xl mx-auto px-6 py-12">
+  <a href="/" class="text-sm text-slate-500 hover:text-slate-800">&larr; Madeirabook</a>
+  <h1 class="text-3xl font-black mt-4 mb-2">${esc(p.title)}</h1>
+  <p class="text-slate-500 mb-6">${priceEuro} &euro; / night &middot; cleaning ${cleaning} &euro;</p>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+    <h2 class="text-lg font-bold mb-4">Book this property</h2>
+    <form id="bookForm" class="space-y-4">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">Arrival</label>
+          <input type="date" name="arrivalDate" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">Departure</label>
+          <input type="date" name="departureDate" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Your name</label>
+        <input type="text" name="guestName" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Email</label>
+        <input type="email" name="guestEmail" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+      <button type="submit" id="submitBtn" class="w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 transition-colors">
+        Continue to payment
+      </button>
+      <p id="errMsg" class="hidden text-sm text-red-600"></p>
+    </form>
+  </div>
+</div>
+
+<script>
+document.getElementById('bookForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const err = document.getElementById('errMsg');
+  btn.disabled = true; btn.textContent = 'Creating session...';
+  err.classList.add('hidden');
+  const fd = new FormData(e.target);
+  const body = {
+    propertyId: ${JSON.stringify(p.smoobu_id)},
+    arrivalDate: fd.get('arrivalDate'),
+    departureDate: fd.get('departureDate'),
+    guestName: fd.get('guestName'),
+    guestEmail: fd.get('guestEmail')
+  };
+  try {
+    const r = await fetch('/api/create-booking-and-pay', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await r.json();
+    if (!r.ok || !data.url) {
+      throw new Error(data.error || 'Could not create payment session');
+    }
+    window.location.href = data.url;
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = 'Continue to payment';
+  }
+});
+</script>
+</body></html>`);
+  } catch (e) {
+    next(e);
+  }
+});
+
+
 module.exports = router;
