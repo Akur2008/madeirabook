@@ -4,16 +4,61 @@ const db = require('../../db/client');
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-  res.send(
-    '<html><head><meta charset="utf-8"></head>'
-    + '<body style="font-family:Arial;text-align:center;padding:40px;">'
-    + '<h1>Madeirabook</h1>'
-    + '<p>Платформа бронирования Madeira</p>'
-    + '<p><a href="/health">Health</a> | '
-    + '<a href="/admin">Admin</a></p>'
-    + '</body></html>'
-  );
+router.get('/', async (req, res, next) => {
+  try {
+    const r = await db.query(
+      `SELECT p.id, p.slug, p.title, p.price_per_night, p.cleaning_fee,
+              (SELECT m.url FROM properties_media pm
+               JOIN media m ON m.id = pm.image_id
+               WHERE pm._parent_id = p.id ORDER BY pm._order LIMIT 1) AS cover
+       FROM properties p
+       WHERE p.status = 'published'
+       ORDER BY p.featured DESC NULLS LAST, p.id DESC
+       LIMIT 60`
+    );
+    const props = r.rows;
+
+    let cards = '';
+    for (const p of props) {
+      const price = p.price_per_night ? Number(p.price_per_night).toFixed(0) : '—';
+      const img = p.cover
+        ? '<img src="' + esc(p.cover) + '" alt="' + esc(p.title) + '" class="w-full h-48 object-cover rounded-t-2xl">'
+        : '<div class="w-full h-48 bg-slate-100 rounded-t-2xl flex items-center justify-center text-slate-400 text-sm">no photo</div>';
+      cards += '<a href="/p/' + esc(p.slug) + '" class="block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">'
+        + img
+        + '<div class="p-4">'
+        + '<h3 class="font-bold text-lg mb-1">' + esc(p.title) + '</h3>'
+        + '<p class="text-slate-500 text-sm">' + price + ' EUR / night</p>'
+        + '</div></a>';
+    }
+
+    res.send(`<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Madeirabook — book your stay in Madeira</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head><body class="bg-slate-50 min-h-screen">
+<div class="max-w-6xl mx-auto px-6 py-12">
+  <header class="mb-10">
+    <h1 class="text-4xl font-black mb-2">Madeirabook</h1>
+    <p class="text-slate-500">Book unique stays in Madeira, direct from owners.</p>
+  </header>
+
+  <h2 class="text-sm uppercase font-bold text-slate-500 mb-4">Available properties</h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    ${cards || '<p class="text-slate-400">No properties yet</p>'}
+  </div>
+
+  <footer class="mt-16 pt-6 border-t border-slate-200 text-xs text-slate-400 flex flex-wrap gap-4">
+    <a href="/legal/cookie-policy" class="hover:text-slate-700">Cookie Policy</a>
+    <a href="/legal/privacy-policy" class="hover:text-slate-700">Privacy Policy</a>
+    <a href="/legal/terms-of-service" class="hover:text-slate-700">Terms of Service</a>
+  </footer>
+</div>
+</body></html>`);
+  } catch (e) {
+    next(e);
+  }
 });
 
 router.get('/booking-success', async (req, res) => {
