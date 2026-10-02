@@ -180,6 +180,10 @@ router.get('/p/:slug', async (req, res, next) => {
   ${gallery}
   <h1 class="text-3xl font-black mt-4 mb-2">${esc(p.title)}</h1>
   <p class="text-slate-500 mb-4">${priceEuro} &euro; / night &middot; cleaning ${cleaning} &euro;</p>
+  <a href="/oasis/${esc(p.slug)}" class="inline-flex items-center gap-2 mb-6 px-5 py-3 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-cyan-100 border border-cyan-500/20 hover:border-cyan-400/50 transition-all shadow-lg">
+    <span class="text-lg">&#9654;</span>
+    <span class="text-sm font-medium">Listen to the sound of this place</span>
+  </a>
   ${p.description ? '<p class="text-slate-700 leading-relaxed mb-6 whitespace-pre-line">' + esc(p.description) + '</p>' : '<div class="mb-6"></div>'}
 
   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
