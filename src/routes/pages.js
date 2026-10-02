@@ -140,6 +140,11 @@ router.get('/p/:slug', async (req, res, next) => {
       <p id="errMsg" class="hidden text-sm text-red-600"></p>
     </form>
   </div>
+  <footer class="mt-12 pt-6 border-t border-slate-200 text-xs text-slate-400 flex flex-wrap gap-4">
+    <a href="/legal/cookie-policy" class="hover:text-slate-700">Cookie Policy</a>
+    <a href="/legal/privacy-policy" class="hover:text-slate-700">Privacy Policy</a>
+    <a href="/legal/terms-of-service" class="hover:text-slate-700">Terms of Service</a>
+  </footer>
 </div>
 
 <script>
@@ -180,6 +185,59 @@ document.getElementById('bookForm').addEventListener('submit', async function (e
     next(e);
   }
 });
+
+
+
+// === LEGAL PAGES ===
+function renderLegal(title, content, lastUpdated) {
+  const body = content
+    ? esc(content).replace(/\n/g, '<br>')
+    : '<p class="text-slate-400 italic">This document is being prepared. Check back soon.</p>';
+  const updated = lastUpdated
+    ? '<p class="text-xs text-slate-400 mt-8">Last updated: ' + new Date(lastUpdated).toISOString().slice(0, 10) + '</p>'
+    : '';
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(title)} — Madeirabook</title>
+<script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-slate-50 min-h-screen">
+<div class="max-w-2xl mx-auto px-6 py-12">
+  <a href="/" class="text-sm text-slate-500 hover:text-slate-800">&larr; Madeirabook</a>
+  <h1 class="text-3xl font-black mt-4 mb-6">${esc(title)}</h1>
+  <div class="text-slate-700 leading-relaxed">${body}</div>
+  ${updated}
+  <footer class="mt-12 pt-6 border-t border-slate-200 text-xs text-slate-400 flex flex-wrap gap-4">
+    <a href="/legal/cookie-policy" class="hover:text-slate-700">Cookie Policy</a>
+    <a href="/legal/privacy-policy" class="hover:text-slate-700">Privacy Policy</a>
+    <a href="/legal/terms-of-service" class="hover:text-slate-700">Terms of Service</a>
+  </footer>
+</div>
+</body></html>`;
+}
+
+function legalHandler(table, fallbackTitle) {
+  return async (req, res, next) => {
+    try {
+      let row = null;
+      try {
+        const r = await db.query('SELECT title, content, last_updated FROM ' + table + ' LIMIT 1');
+        row = r.rows[0] || null;
+      } catch (e) {
+        // таблицы может не быть в конкретном окружении — отдаём placeholder
+      }
+      const title = (row && row.title) || fallbackTitle;
+      const content = row && row.content;
+      const lastUpdated = row && row.last_updated;
+      res.send(renderLegal(title, content, lastUpdated));
+    } catch (e) {
+      next(e);
+    }
+  };
+}
+
+router.get('/legal/cookie-policy', legalHandler('cookie_policy', 'Cookie Policy'));
+router.get('/legal/privacy-policy', legalHandler('privacy_policy', 'Privacy Policy'));
+router.get('/legal/terms-of-service', legalHandler('terms_of_service', 'Terms of Service'));
 
 
 module.exports = router;
