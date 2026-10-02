@@ -206,6 +206,16 @@ router.post('/logout', (req, res) => {
   res.redirect(303, '/owner/login');
 });
 
+function formatEuro(cents) {
+  if (cents == null) return '—';
+  return (Number(cents) / 100).toFixed(2) + ' \u20AC';
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  return new Date(d).toISOString().slice(0, 10);
+}
+
 router.get('/', requireOwner, async (req, res, next) => {
   try {
     const propsRes = await db.query(
@@ -214,20 +224,60 @@ router.get('/', requireOwner, async (req, res, next) => {
     );
     const props = propsRes.rows;
 
-    let rows = '';
+    const bookingsRes = await db.query(
+      `SELECT b.id, b.arrival_date, b.departure_date, b.status,
+              b.amount_cents, b.platform_fee_cents, b.guest_email,
+              b.created_at, p.smoobu_id
+       FROM bookings b
+       JOIN properties p ON p.id = b.property_id
+       WHERE p.owner_id = $1
+       ORDER BY b.created_at DESC
+       LIMIT 50`,
+      [req.owner.id]
+    );
+    const bookings = bookingsRes.rows;
+
+    let totalPaidCents = 0;
+    let totalFeeCents = 0;
+    for (const b of bookings) {
+      if (b.status === 'paid') {
+        totalPaidCents += Number(b.amount_cents || 0);
+        totalFeeCents += Number(b.platform_fee_cents || 0);
+      }
+    }
+    const netCents = totalPaidCents - totalFeeCents;
+
+    let propRows = '';
     for (const p of props) {
-      rows += '<tr class="border-t border-slate-200">'
-        + '<td class="px-4 py-3 font-mono text-sm">' + ownerEscapeHtml(p.smoobu_id || '—') + '</td>'
-        + '<td class="px-4 py-3">' + ownerEscapeHtml(p.commission_percent || '—') + '%</td>'
+      propRows += '<tr class="border-t border-slate-200">'
+        + '<td class="px-4 py-3 font-mono text-sm">' + ownerEscapeHtml(p.smoobu_id || '\u2014') + '</td>'
+        + '<td class="px-4 py-3">' + ownerEscapeHtml(p.commission_percent || '\u2014') + '%</td>'
         + '<td class="px-4 py-3">' + (p.charges_enabled ? '<span class="text-emerald-600">&#9679;</span> Active' : '<span class="text-slate-400">&#9679;</span> Pending') + '</td>'
         + '</tr>';
     }
 
+    let bookingRows = '';
+    for (const b of bookings) {
+      const badge = b.status === 'paid'
+        ? '<span class="text-emerald-600">&#9679;</span> Paid'
+        : (b.status === 'pending'
+          ? '<span class="text-amber-500">&#9679;</span> Pending'
+          : '<span class="text-slate-400">&#9679;</span> ' + ownerEscapeHtml(b.status || '\u2014'));
+      bookingRows += '<tr class="border-t border-slate-200">'
+        + '<td class="px-4 py-3 font-mono text-xs">' + ownerEscapeHtml(b.smoobu_id || '\u2014') + '</td>'
+        + '<td class="px-4 py-3 text-sm">' + formatDate(b.arrival_date) + ' \u2192 ' + formatDate(b.departure_date) + '</td>'
+        + '<td class="px-4 py-3 text-sm">' + ownerEscapeHtml(b.guest_email || '\u2014') + '</td>'
+        + '<td class="px-4 py-3 text-sm">' + formatEuro(b.amount_cents) + '</td>'
+        + '<td class="px-4 py-3 text-sm text-slate-500">' + formatEuro(b.platform_fee_cents) + '</td>'
+        + '<td class="px-4 py-3 text-sm">' + badge + '</td>'
+        + '</tr>';
+    }
+
     res.send(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><title>Owner cabinet — Madeirabook</title>
+<html lang="en"><head><meta charset="UTF-8"><title>Owner cabinet \u2014 Madeirabook</title>
 <script src="https://cdn.tailwindcss.com"></script></head>
 <body class="bg-slate-50 min-h-screen p-6">
-<div class="max-w-4xl mx-auto">
+<div class="max-w-5xl mx-auto">
   <div class="flex items-center justify-between mb-6">
     <div>
       <h1 class="text-2xl font-black">Owner cabinet</h1>
@@ -240,13 +290,49 @@ router.get('/', requireOwner, async (req, res, next) => {
       </form>
     </div>
   </div>
-  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+      <p class="text-xs uppercase text-slate-500 mb-1">Gross paid</p>
+      <p class="text-2xl font-black">${formatEuro(totalPaidCents)}</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+      <p class="text-xs uppercase text-slate-500 mb-1">Platform fee</p>
+      <p class="text-2xl font-black text-slate-500">${formatEuro(totalFeeCents)}</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+      <p class="text-xs uppercase text-slate-500 mb-1">Net to you</p>
+      <p class="text-2xl font-black text-emerald-600">${formatEuro(netCents)}</p>
+    </div>
+  </div>
+
+  <h2 class="text-sm uppercase font-bold text-slate-500 mb-2">Properties</h2>
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
     <table class="w-full text-left">
       <thead class="bg-slate-50 text-xs uppercase text-slate-500">
         <tr><th class="px-4 py-3">Property</th><th class="px-4 py-3">Commission</th><th class="px-4 py-3">Status</th></tr>
       </thead>
       <tbody>
-        ${rows || '<tr><td colspan="3" class="px-4 py-8 text-center text-slate-400">No properties yet</td></tr>'}
+        ${propRows || '<tr><td colspan="3" class="px-4 py-8 text-center text-slate-400">No properties yet</td></tr>'}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-sm uppercase font-bold text-slate-500 mb-2">Bookings (last 50)</h2>
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <table class="w-full text-left">
+      <thead class="bg-slate-50 text-xs uppercase text-slate-500">
+        <tr>
+          <th class="px-4 py-3">Property</th>
+          <th class="px-4 py-3">Dates</th>
+          <th class="px-4 py-3">Guest</th>
+          <th class="px-4 py-3">Amount</th>
+          <th class="px-4 py-3">Fee</th>
+          <th class="px-4 py-3">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${bookingRows || '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">No bookings yet</td></tr>'}
       </tbody>
     </table>
   </div>
