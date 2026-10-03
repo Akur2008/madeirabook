@@ -18,7 +18,9 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
     const lastName = req.body.lastName || '';
     const phone = req.body.phone || '';
     const country = req.body.country || '';
-    const address = req.body.address || '';
+    const street = req.body.street || '';
+    const postalCode = req.body.postalCode || '';
+    const location = req.body.location || '';
     const arrivalTime = req.body.arrivalTime || '15:00';
 
     let guestTelegramId = null;
@@ -124,7 +126,9 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
           lastName: lastName,
           phone: phone,
           country: country,
-          address: address,
+          street: street,
+          postalCode: postalCode,
+          location: location,
           arrivalTime: arrivalTime,
           arrivalDate: arrivalDate,
           departureDate: departureDate

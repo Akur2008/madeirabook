@@ -142,8 +142,12 @@ async function createReservation(p) {
     lastName: p.lastName || '-',
     email: p.guestEmail,
     phone: p.phone || '-',
-    country: p.country || '-',
-    address: p.address || '-',
+    country: p.country || 'PT',
+    address: {
+      street: p.street || '-',
+      postalCode: p.postalCode || '-',
+      location: p.location || '-'
+    },
     arrivalTime: p.arrivalTime || '15:00',
     adults: 2,
   };

@@ -85,7 +85,9 @@ router.post('/', async (req, res) => {
             lastName: s.metadata.lastName || '-',
             phone: s.metadata.phone || '-',
             country: s.metadata.country || '-',
-            address: s.metadata.address || '-',
+            street: s.metadata.street || '-',
+            postalCode: s.metadata.postalCode || '-',
+            location: s.metadata.location || '-',
             arrivalTime: s.metadata.arrivalTime || '15:00',
             guestEmail: s.customer_details ? s.customer_details.email : null
           });

@@ -228,8 +228,18 @@ router.get('/p/:slug', async (req, res, next) => {
         </div>
       </div>
       <div>
-        <label class="block text-xs uppercase text-slate-500 mb-1">Address</label>
-        <input type="text" name="address" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        <label class="block text-xs uppercase text-slate-500 mb-1">Street address</label>
+        <input type="text" name="street" required placeholder="Rua da Praia 12" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">Postal code</label>
+          <input type="text" name="postalCode" required placeholder="9000-000" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">City</label>
+          <input type="text" name="location" required placeholder="Funchal" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
       </div>
       <button type="submit" id="submitBtn" class="w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 transition-colors">
         Continue to payment
@@ -261,7 +271,9 @@ document.getElementById('bookForm').addEventListener('submit', async function (e
     guestEmail: fd.get('guestEmail'),
     phone: fd.get('phone'),
     country: fd.get('country'),
-    address: fd.get('address'),
+    street: fd.get('street'),
+    postalCode: fd.get('postalCode'),
+    location: fd.get('location'),
     arrivalTime: fd.get('arrivalTime')
   };
   try {
