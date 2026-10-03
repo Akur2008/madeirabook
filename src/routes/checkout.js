@@ -53,16 +53,18 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
       });
     }
 
+    // Проверка доступности + цены.
+    // getPrice бросает ошибку, если даты заняты (availableApartments=[]).
     let price;
     if (process.env.PRICE_MOCK) {
       price = parseFloat(process.env.PRICE_MOCK);
       console.log('MOCK PRICE:', price);
     } else {
       price = await pms.getPrice(
-      prop.smoobu_id,
-      arrivalDate,
-      departureDate
-    );
+        prop.smoobu_id,
+        arrivalDate,
+        departureDate
+      );
     }
 
     const amountCents = Math.round(price * 100);
@@ -71,24 +73,19 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
       prop.commission_percent
     );
 
-    const smoobuBookingId = (process.env.PRICE_MOCK
-        ? 'MOCK-BOOKING-' + Date.now()
-        : await pms.createReservation({
-            propertyId: prop.smoobu_id,
-            arrivalDate: arrivalDate,
-            departureDate: departureDate
-          }))
+    // ВАЖНО: бронь в Smoobu создаётся НЕ здесь, а в webhook после оплаты
+    // (см. src/routes/webhook.js, checkout.session.completed).
+    // Здесь только Stripe-сессия + запись в bookings (pending).
 
     const ins = await db.query(
       'INSERT INTO bookings '
-      + '(property_id, smoobu_booking_id, amount_cents, '
+      + '(property_id, amount_cents, '
       + 'platform_fee_cents, status, source, guest_email, '
       + 'arrival_date, departure_date, guest_telegram_id) '
-      + 'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) '
+      + 'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) '
       + 'RETURNING id',
       [
         prop.id,
-        smoobuBookingId,
         amountCents,
         platformFeeCents,
         'pending',
@@ -115,8 +112,12 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
         guestEmail: guestEmail,
         description: description,
         metadata: {
-          smoobuBookingId: String(smoobuBookingId),
-          bookingId: String(bookingId)
+          bookingId: String(bookingId),
+          smoobuId: String(prop.smoobu_id),
+          propertyId: String(prop.id),
+          guestName: guestName || '',
+          arrivalDate: arrivalDate,
+          departureDate: departureDate
         },
         successUrl: base + '/booking-success'
           + '?session_id={CHECKOUT_SESSION_ID}',

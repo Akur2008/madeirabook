@@ -56,28 +56,79 @@ router.post('/', async (req, res) => {
       );
     } else if (event.type === 'checkout.session.completed') {
       const s = event.data.object;
+
+      // 1. Помечаем paid + сохраняем payment_intent
       const upd = await db.query(
         'UPDATE bookings SET status = $1, '
         + 'stripe_payment_intent = $2, updated_at = NOW() '
         + 'WHERE stripe_session_id = $3 '
-        + 'RETURNING id, smoobu_booking_id',
+        + 'RETURNING id',
         ['paid', s.payment_intent, s.id]
       );
       const row = upd.rows[0];
-      if (row && row.smoobu_booking_id) {
+
+      // 2. Создаём бронь в Smoobu (только после оплаты)
+      // SMOOBU_MOCK=true — пропускаем (dev-режим, чтобы не плодить реальные брони)
+      if (process.env.SMOOBU_MOCK === 'true') {
+        await db.query(
+          "UPDATE bookings SET smoobu_booking_id = $1, updated_at = NOW() WHERE id = $2",
+          ['MOCK-BOOKING-' + Date.now(), row.id]
+        );
+        logger.info({ bookingId: row.id }, 'SMOOBU_MOCK: reservation skipped');
+      } else if (row && s.metadata && s.metadata.smoobuId) {
         try {
-          const pmsRes = await pms.markPaid(row.smoobu_booking_id);
+          const smoobuBookingId = await pms.createReservation({
+            propertyId: s.metadata.smoobuId,
+            arrivalDate: s.metadata.arrivalDate,
+            departureDate: s.metadata.departureDate,
+            guestName: s.metadata.guestName || 'Guest',
+            guestEmail: s.customer_details ? s.customer_details.email : null
+          });
+
+          await db.query(
+            'UPDATE bookings SET smoobu_booking_id = $1, updated_at = NOW() WHERE id = $2',
+            [smoobuBookingId, row.id]
+          );
+
           logger.info(
-            { smoobuBookingId: row.smoobu_booking_id },
-            pmsRes && pmsRes.mock
-              ? 'SMOOBU_MOCK: markPaid skipped'
-              : 'marked paid in Smoobu'
+            { bookingId: row.id, smoobuBookingId: smoobuBookingId },
+            'reservation created in Smoobu'
           );
+
+          // Помечаем бронь оплаченной в Smoobu
+          try {
+            await pms.markPaid(smoobuBookingId);
+          } catch (markErr) {
+            logger.warn(
+              { err: markErr.message, smoobuBookingId: smoobuBookingId },
+              'smoobu markPaid failed (не критично)'
+            );
+          }
         } catch (smoobuErr) {
-          logger.error(
-            { err: smoobuErr.message },
-            'smoobu markPaid failed'
+          // Оплата прошла, но Smoobu отказал — флаг paid_no_pms + уведомление
+          await db.query(
+            "UPDATE bookings SET status = 'paid_no_pms', updated_at = NOW() WHERE id = $1",
+            [row.id]
           );
+          logger.error(
+            { err: smoobuErr.message, bookingId: row.id, smoobuId: s.metadata.smoobuId },
+            'SMOOBU CREATE FAILED — оплата есть, брони нет. Требуется ручное вмешательство'
+          );
+          // Уведомление тебе в Telegram (если TELEGRAM_ADMIN_CHAT_ID настроен)
+          if (process.env.TELEGRAM_ADMIN_CHAT_ID) {
+            try {
+              await telegramNotify.sendMessage(
+                process.env.TELEGRAM_ADMIN_CHAT_ID,
+                'ПРОБЛЕМА: оплата прошла, но Smoobu отказал.\n'
+                + 'Booking ID: ' + row.id + '\n'
+                + 'Smoobu ID: ' + s.metadata.smoobuId + '\n'
+                + 'Даты: ' + s.metadata.arrivalDate + ' - ' + s.metadata.departureDate + '\n'
+                + 'Причина: ' + smoobuErr.message
+              );
+            } catch (tgErr) {
+              logger.error({ err: tgErr.message }, 'admin notify failed');
+            }
+          }
         }
       }
       if (row) {
@@ -146,29 +197,16 @@ router.post('/', async (req, res) => {
       }
     } else if (event.type === 'checkout.session.expired') {
       const s = event.data.object;
-      const upd = await db.query(
+      // Бронь в Smoobu НЕ создавалась на этапе checkout — отменять нечего.
+      await db.query(
         'UPDATE bookings SET status = $1, updated_at = NOW() '
-        + 'WHERE stripe_session_id = $2 AND status = $3 '
-        + 'RETURNING smoobu_booking_id',
+        + 'WHERE stripe_session_id = $2 AND status = $3',
         ['cancelled', s.id, 'pending']
       );
-      const row = upd.rows[0];
-      if (row && row.smoobu_booking_id) {
-        try {
-          const pmsRes = await pms.cancelReservation(row.smoobu_booking_id);
-          logger.info(
-            { smoobuBookingId: row.smoobu_booking_id },
-            pmsRes && pmsRes.mock
-              ? 'SMOOBU_MOCK: cancelReservation skipped (session expired)'
-              : 'cancelled in Smoobu (session expired)'
-          );
-        } catch (smoobuErr) {
-          logger.error(
-            { err: smoobuErr.message },
-            'smoobu cancelReservation failed'
-          );
-        }
-      }
+      logger.info(
+        { sessionId: s.id },
+        'checkout session expired — booking marked cancelled'
+      );
     } else if (event.type === 'charge.refunded') {
       const ch = event.data.object;
       const upd = await db.query(
