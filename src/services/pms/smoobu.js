@@ -10,7 +10,7 @@ const EMPTY_BODY_HASH = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991
  * 6 строк через \n: METHOD, PATH, QUERY, TIMESTAMP, NONCE, SHA256(BODY)
  */
 function buildCanonicalString(method, path, query, timestamp, nonce, bodyHash) {
-  return [method, path, query || '', timestamp, nonce, bodyHash].join('\n');
+  return [method, path, query || '', timestamp, nonce, bodyHash, config.SMOOBU_API_KEY].join('\n');
 }
 
 /**
@@ -112,16 +112,22 @@ async function getApartment(id) {
  * Цена за период.
  */
 async function getPrice(propertyId, arrivalDate, departureDate) {
-  const res = await smoobuRequest('GET', '/api/rates', null, {
-    apartments: propertyId,
+  const customerId = Number(config.SMOOBU_USER_ID);
+  const body = {
     arrivalDate,
     departureDate,
-  });
-  const price = res && res.totalPrice != null ? res.totalPrice : null;
-  if (!Number.isFinite(Number(price))) {
-    throw new Error('Smoobu вернул некорректную цену: ' + JSON.stringify(res));
+    apartments: [Number(propertyId)],
+    customerId,
+  };
+  const res = await smoobuRequest('POST', '/booking/checkApartmentAvailability', body);
+  const prices = res && res.prices ? res.prices : {};
+  const entry = prices[String(propertyId)] || prices[Number(propertyId)];
+  if (!entry || !Number.isFinite(Number(entry.price))) {
+    const errs = res && res.errorMessages ? res.errorMessages : {};
+    const reason = errs[String(propertyId)] ? JSON.stringify(errs[String(propertyId)]) : JSON.stringify(res);
+    throw new Error('Smoobu не вернул цену: ' + reason);
   }
-  return Number(price);
+  return Number(entry.price);
 }
 
 /**
