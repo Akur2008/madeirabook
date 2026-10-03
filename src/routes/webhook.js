@@ -82,6 +82,11 @@ router.post('/', async (req, res) => {
             arrivalDate: s.metadata.arrivalDate,
             departureDate: s.metadata.departureDate,
             guestName: s.metadata.guestName || 'Guest',
+            lastName: s.metadata.lastName || '-',
+            phone: s.metadata.phone || '-',
+            country: s.metadata.country || '-',
+            address: s.metadata.address || '-',
+            arrivalTime: s.metadata.arrivalTime || '15:00',
             guestEmail: s.customer_details ? s.customer_details.email : null
           });
 

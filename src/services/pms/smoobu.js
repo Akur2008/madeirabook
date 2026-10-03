@@ -139,8 +139,12 @@ async function createReservation(p) {
     arrivalDate: p.arrivalDate,
     departureDate: p.departureDate,
     firstName: p.guestName || 'Guest',
-    lastName: '',
+    lastName: p.lastName || '-',
     email: p.guestEmail,
+    phone: p.phone || '-',
+    country: p.country || '-',
+    address: p.address || '-',
+    arrivalTime: p.arrivalTime || '15:00',
     adults: 2,
   };
   const res = await smoobuRequest('POST', '/api/reservations', body);

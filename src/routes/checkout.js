@@ -15,6 +15,11 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
     const departureDate = req.body.departureDate;
     const guestEmail = req.body.guestEmail;
     const guestName = req.body.guestName;
+    const lastName = req.body.lastName || '';
+    const phone = req.body.phone || '';
+    const country = req.body.country || '';
+    const address = req.body.address || '';
+    const arrivalTime = req.body.arrivalTime || '15:00';
 
     let guestTelegramId = null;
     const initDataHeader = req.headers['x-telegram-init-data'];
@@ -116,6 +121,11 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
           smoobuId: String(prop.smoobu_id),
           propertyId: String(prop.id),
           guestName: guestName || '',
+          lastName: lastName,
+          phone: phone,
+          country: country,
+          address: address,
+          arrivalTime: arrivalTime,
           arrivalDate: arrivalDate,
           departureDate: departureDate
         },

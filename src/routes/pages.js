@@ -199,13 +199,37 @@ router.get('/p/:slug', async (req, res, next) => {
           <input type="date" name="departureDate" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
         </div>
       </div>
-      <div>
-        <label class="block text-xs uppercase text-slate-500 mb-1">Your name</label>
-        <input type="text" name="guestName" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">First name</label>
+          <input type="text" name="guestName" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">Last name</label>
+          <input type="text" name="lastName" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
       </div>
       <div>
         <label class="block text-xs uppercase text-slate-500 mb-1">Email</label>
         <input type="email" name="guestEmail" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Phone</label>
+        <input type="tel" name="phone" required placeholder="+351 900 000 000" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">Country</label>
+          <input type="text" name="country" required placeholder="Portugal" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">Arrival time</label>
+          <input type="time" name="arrivalTime" required value="15:00" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Address</label>
+        <input type="text" name="address" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
       </div>
       <button type="submit" id="submitBtn" class="w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 transition-colors">
         Continue to payment
@@ -233,7 +257,12 @@ document.getElementById('bookForm').addEventListener('submit', async function (e
     arrivalDate: fd.get('arrivalDate'),
     departureDate: fd.get('departureDate'),
     guestName: fd.get('guestName'),
-    guestEmail: fd.get('guestEmail')
+    lastName: fd.get('lastName'),
+    guestEmail: fd.get('guestEmail'),
+    phone: fd.get('phone'),
+    country: fd.get('country'),
+    address: fd.get('address'),
+    arrivalTime: fd.get('arrivalTime')
   };
   try {
     const r = await fetch('/api/create-booking-and-pay', {
