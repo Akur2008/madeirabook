@@ -69,6 +69,7 @@ async function createBookingCheckoutSession(opts) {
     mode: 'payment',
     customer_email: opts.guestEmail,
     payment_intent_data: paymentIntentData,
+    metadata: opts.metadata || {},
     success_url: opts.successUrl,
     cancel_url: opts.cancelUrl
   });
