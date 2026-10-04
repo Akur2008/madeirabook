@@ -1,6 +1,5 @@
 const express = require('express');
-const { getPayload } = require('payload');
-const config = require('../../payload.config');
+const db = require('../../db/client');
 const logger = require('../logger');
 
 const router = express.Router();
@@ -12,7 +11,6 @@ function esc(s) {
   });
 }
 
-// Простой markdown → HTML (без внешних либ)
 function mdToHtml(md) {
   if (!md) return '';
   var html = esc(md);
@@ -21,6 +19,7 @@ function mdToHtml(md) {
   html = html.replace(/^# (.+)$/gm, '<h1 class="text-3xl font-black mt-8 mb-4">$1</h1>');
   html = html.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
   html = html.replace(/\\*(.+?)\\*/g, '<em>$1</em>');
+  html = html.replace(/^- (.+)$/gm, '<li class="ml-6 list-disc">$1</li>');
   html = html.replace(/\\n\\n/g, '</p><p class="mb-4 leading-relaxed">');
   html = '<p class="mb-4 leading-relaxed">' + html + '</p>';
   return html;
@@ -29,15 +28,15 @@ function mdToHtml(md) {
 router.get('/:slug', async (req, res, next) => {
   try {
     const slug = req.params.slug;
-    const payload = await getPayload({ config: config.default || config });
-    const result = await payload.find({
-      collection: 'guides',
-      where: { slug: { equals: slug }, status: { equals: 'published' } },
-      limit: 1,
-      depth: 2
-    });
+    const base = (process.env.APP_URL || 'https://app.madeirabook.com').replace(/\/$/, '');
 
-    if (!result.docs.length) {
+    const gRes = await db.query(
+      'SELECT id, title, slug, ai_summary, content, schema_type, published_at, created_at '
+      + 'FROM guides WHERE slug = $1 AND status = $2 LIMIT 1',
+      [slug, 'published']
+    );
+
+    if (!gRes.rows.length) {
       return res.status(404).send('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Not found</title>'
         + '<script src="https://cdn.tailwindcss.com"></script></head>'
         + '<body class="bg-slate-50 min-h-screen flex items-center justify-center px-6">'
@@ -46,16 +45,31 @@ router.get('/:slug', async (req, res, next) => {
         + '<a href="/" class="text-emerald-600 hover:underline">&larr; Home</a></div></body></html>');
     }
 
-    const guide = result.docs[0];
-    const base = (process.env.APP_URL || 'https://app.madeirabook.com').replace(/\/$/, '');
+    const guide = gRes.rows[0];
 
-    // Schema.org JSON-LD
+    // FAQ
+    const fRes = await db.query(
+      'SELECT question, answer FROM guides_faqs WHERE _parent_id = $1 ORDER BY _order',
+      [guide.id]
+    );
+    const faqs = fRes.rows;
+
+    // Related properties
+    const rRes = await db.query(
+      'SELECT p.slug, p.title, p.price_per_night FROM guides_rels gr '
+      + 'JOIN properties p ON p.id = gr.properties_id '
+      + 'WHERE gr.parent_id = $1 ORDER BY gr."order"',
+      [guide.id]
+    );
+    const related = rRes.rows;
+
+    // Schema.org
     let jsonLd;
-    if (guide.schemaType === 'FAQPage' && guide.faqs && guide.faqs.length) {
+    if (guide.schema_type === 'FAQPage' && faqs.length) {
       jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'FAQPage',
-        mainEntity: guide.faqs.map(function (f) {
+        mainEntity: faqs.map(function (f) {
           return {
             '@type': 'Question',
             name: f.question,
@@ -68,18 +82,18 @@ router.get('/:slug', async (req, res, next) => {
         '@context': 'https://schema.org',
         '@type': 'Article',
         headline: guide.title,
-        description: guide.aiSummary,
+        description: guide.ai_summary,
         url: base + '/g/' + guide.slug,
-        datePublished: guide.publishedAt || guide.createdAt,
+        datePublished: guide.published_at || guide.created_at,
         publisher: { '@type': 'Organization', name: 'Madeirabook', url: base }
       };
     }
 
     // FAQ HTML
     let faqHtml = '';
-    if (guide.faqs && guide.faqs.length) {
+    if (faqs.length) {
       faqHtml = '<section class="mt-12 border-t pt-8"><h2 class="text-2xl font-bold mb-6">Frequently Asked Questions</h2>';
-      for (const f of guide.faqs) {
+      for (const f of faqs) {
         faqHtml += '<div class="mb-4 bg-slate-50 p-6 rounded-xl">'
           + '<h3 class="font-semibold text-lg text-slate-800 mb-2">' + esc(f.question) + '</h3>'
           + '<p class="text-slate-700">' + esc(f.answer) + '</p>'
@@ -88,17 +102,15 @@ router.get('/:slug', async (req, res, next) => {
       faqHtml += '</section>';
     }
 
-    // Related properties
+    // Related HTML
     let relatedHtml = '';
-    if (guide.relatedProperties && guide.relatedProperties.length) {
+    if (related.length) {
       relatedHtml = '<section class="mt-12 border-t pt-8"><h2 class="text-2xl font-bold mb-6">Recommended Places to Stay</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
-      for (const p of guide.relatedProperties) {
-        if (typeof p === 'object' && p.slug) {
-          relatedHtml += '<a href="/p/' + esc(p.slug) + '" class="block border rounded-xl p-4 hover:shadow-md transition-shadow">'
-            + '<h3 class="font-semibold text-lg">' + esc(p.title) + '</h3>'
-            + (p.pricePerNight ? '<p class="text-slate-500 mt-1">&euro;' + p.pricePerNight + ' / night</p>' : '')
-            + '</a>';
-        }
+      for (const p of related) {
+        relatedHtml += '<a href="/p/' + esc(p.slug) + '" class="block border rounded-xl p-4 hover:shadow-md transition-shadow">'
+          + '<h3 class="font-semibold text-lg">' + esc(p.title) + '</h3>'
+          + (p.price_per_night ? '<p class="text-slate-500 mt-1">&euro;' + Number(p.price_per_night).toFixed(0) + ' / night</p>' : '')
+          + '</a>';
       }
       relatedHtml += '</div></section>';
     }
@@ -109,7 +121,7 @@ router.get('/:slug', async (req, res, next) => {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${esc(guide.title)} — Madeirabook</title>
-<meta name="description" content="${esc(guide.aiSummary.slice(0, 160))}">
+<meta name="description" content="${esc((guide.ai_summary || '').slice(0, 160))}">
 <script src="https://cdn.tailwindcss.com"></script>
 <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
 </head>
@@ -119,7 +131,7 @@ router.get('/:slug', async (req, res, next) => {
   <header class="mt-6 mb-8">
     <h1 class="text-4xl font-black tracking-tight mb-4">${esc(guide.title)}</h1>
     <div class="p-4 bg-blue-50 border-l-4 border-blue-600 rounded-r-lg text-lg text-blue-900 font-medium">
-      ${esc(guide.aiSummary)}
+      ${esc(guide.ai_summary)}
     </div>
   </header>
 
