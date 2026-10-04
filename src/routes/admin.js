@@ -3,6 +3,7 @@ const express = require('express');
 const db = require('../../db/client');
 const stripeSvc = require('../services/stripe');
 const config = require('../config');
+const { Resend } = require('resend');
 
 const router = express.Router();
 
@@ -185,7 +186,9 @@ router.post('/create-owner', async (req, res, next) => {
     await client.query('COMMIT');
 
     // 4. Возвращаем JSON с ПЕРМАНЕНТНОЙ ссылкой
-    const permalink = 'https://madeirabook-core.vercel.app/owner/onboarding/' + onboardingToken;
+    const base = (config.APP_URL || 'https://app.madeirabook.com').replace(/\/$/, '');
+    const permalink = base + '/owner/onboarding/' + onboardingToken;
+    const loginUrl = base + '/owner/login';
     console.log('=== OWNER CREATED ===');
     console.log('email:', cleanEmail);
     console.log('owner_id:', ownerId);
@@ -194,6 +197,40 @@ router.post('/create-owner', async (req, res, next) => {
     console.log('permalink:', permalink);
     console.log('=====================');
 
+    // 5. Отправляем письмо владельцу через Resend
+    let emailSent = false;
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: 'Madeirabook <hello@madeirabook.com>',
+          to: cleanEmail,
+          subject: 'Welcome to Madeirabook — set up your owner account',
+          text: 'Hello,\n\nYou have been added as an owner on Madeirabook.\n\n'
+            + 'Step 1 — Set up payouts (Stripe KYC, 5-10 min):\n' + permalink + '\n\n'
+            + 'Step 2 — Sign in to your cabinet anytime:\n' + loginUrl + '\n\n'
+            + 'In the cabinet you can add properties, upload photos, and see your bookings.\n\n'
+            + '— Madeirabook',
+          html: '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#1f2937;">'
+            + '<h2 style="color:#064e3b;">Welcome to Madeirabook</h2>'
+            + '<p>You have been added as an owner.</p>'
+            + '<p style="margin:24px 0;"><a href="' + permalink + '" style="display:inline-block;padding:14px 28px;background:#10b981;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">Set up payouts (Stripe KYC)</a></p>'
+            + '<p>Takes 5–10 minutes. You will need your ID and bank details.</p>'
+            + '<hr style="border:none;border-top:1px solid #e2e8f0;margin:32px 0;">'
+            + '<p><a href="' + loginUrl + '" style="color:#059669;">Sign in to your cabinet anytime &rarr;</a></p>'
+            + '<p style="color:#6b7280;font-size:14px;">In the cabinet you can add properties, upload photos, and see your bookings.</p>'
+            + '<p style="color:#6b7280;font-size:14px;">— Madeirabook</p>'
+            + '</div>'
+        });
+        emailSent = true;
+        console.log('=== OWNER EMAIL SENT to', cleanEmail, '===');
+      } catch (mailErr) {
+        console.error('owner email failed:', mailErr.message);
+      }
+    } else {
+      console.warn('RESEND_API_KEY not set — email not sent');
+    }
+
     res.json({
       ok: true,
       owner_id: ownerId,
@@ -201,7 +238,9 @@ router.post('/create-owner', async (req, res, next) => {
       stripe_account_id: stripeAccountId,
       onboarding_token: onboardingToken,
       permalink: permalink,
-      message: 'Отправь эту ссылку владельцу — она бессрочная'
+      login_url: loginUrl,
+      email_sent: emailSent,
+      message: emailSent ? 'Письмо отправлено владельцу' : 'Письмо не отправлено — скопируй ссылку'
     });
   } catch (e) {
     await client.query('ROLLBACK');
