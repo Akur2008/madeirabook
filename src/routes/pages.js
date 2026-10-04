@@ -359,14 +359,43 @@ router.get('/legal/terms-of-service', legalHandler('terms_of_service', 'Terms of
 
 router.get('/robots.txt', (req, res) => {
   const base = (process.env.APP_URL || 'https://madeirabook-core.vercel.app').replace(/\/$/, '');
+  const aiCrawlers = [
+    'GPTBot',
+    'OAI-SearchBot',
+    'ChatGPT-User',
+    'PerplexityBot',
+    'ClaudeBot',
+    'Claude-Web',
+    'anthropic-ai',
+    'Google-Extended',
+    'Applebot-Extended',
+    'Bytespider',
+    'CCBot',
+    'Meta-ExternalAgent'
+  ];
+
+  let aiSection = '';
+  for (const bot of aiCrawlers) {
+    aiSection += 'User-agent: ' + bot + '\n'
+      + 'Allow: /\n'
+      + 'Disallow: /owner/\n'
+      + 'Disallow: /admin\n'
+      + 'Disallow: /api/\n'
+      + 'Disallow: /webhook\n'
+      + '\n';
+  }
+
   res.type('text/plain').send(
-    'User-agent: *\n'
+    '# Standard crawlers (Google, Bing, etc.)\n'
+    + 'User-agent: *\n'
     + 'Allow: /\n'
     + 'Disallow: /owner/\n'
     + 'Disallow: /admin\n'
     + 'Disallow: /api/\n'
     + 'Disallow: /webhook\n'
     + '\n'
+    + '# AI crawlers — explicitly allowed for citation\n'
+    + aiSection
     + 'Sitemap: ' + base + '/sitemap.xml\n'
   );
 });
