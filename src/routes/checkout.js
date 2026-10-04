@@ -42,7 +42,7 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
 
     const propRes = await db.query(
       'SELECT p.id, p.smoobu_id, p.commission_percent, '
-      + 'p.charges_enabled, o.stripe_account_id, o.id AS owner_id '
+      + 'p.is_platform, p.charges_enabled, o.stripe_account_id, o.id AS owner_id '
       + 'FROM properties p JOIN users o ON o.id = p.owner_id '
       + 'WHERE p.smoobu_id = $1',
       [String(propertyId)]
@@ -54,7 +54,8 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
 
     const prop = propRes.rows[0];
 
-    if (!prop.stripe_account_id || !prop.charges_enabled) {
+    // Свои объекты (is_platform) не требуют Express — деньги идут напрямую
+    if (!prop.is_platform && (!prop.stripe_account_id || !prop.charges_enabled)) {
       return res.status(400).json({
         error: 'Владелец ещё не завершил верификацию Stripe'
       });
@@ -75,10 +76,10 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
     }
 
     const amountCents = Math.round(price * 100);
-    const platformFeeCents = commission.calcFee(
-      amountCents,
-      prop.commission_percent
-    );
+    // Для своих объектов комиссия = 0 (не платим сами себе)
+    const platformFeeCents = prop.is_platform
+      ? 0
+      : commission.calcFee(amountCents, prop.commission_percent);
 
     // ВАЖНО: бронь в Smoobu создаётся НЕ здесь, а в webhook после оплаты
     // (см. src/routes/webhook.js, checkout.session.completed).
@@ -113,7 +114,8 @@ router.post('/create-booking-and-pay', async (req, res, next) => {
     let session;
     try {
       session = await stripeSvc.createBookingCheckoutSession({
-        stripeAccountId: prop.stripe_account_id,
+        stripeAccountId: prop.is_platform ? null : prop.stripe_account_id,
+        isPlatform: prop.is_platform,
         amountCents: amountCents,
         platformFeeCents: platformFeeCents,
         guestEmail: guestEmail,

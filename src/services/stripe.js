@@ -53,14 +53,18 @@ async function createBookingCheckoutSession(opts) {
     quantity: 1
   }];
 
+  // Для своих объектов (isPlatform) — direct charge, без Connect
+  // Для внешних владельцев — destination charge с transfer_data
   var paymentIntentData = {
-    transfer_data: { destination: opts.stripeAccountId },
-    on_behalf_of: opts.stripeAccountId,
     metadata: opts.metadata || {}
   };
 
-  if (opts.platformFeeCents && opts.platformFeeCents > 0) {
-    paymentIntentData.application_fee_amount = opts.platformFeeCents;
+  if (!opts.isPlatform && opts.stripeAccountId) {
+    paymentIntentData.transfer_data = { destination: opts.stripeAccountId };
+    paymentIntentData.on_behalf_of = opts.stripeAccountId;
+    if (opts.platformFeeCents && opts.platformFeeCents > 0) {
+      paymentIntentData.application_fee_amount = opts.platformFeeCents;
+    }
   }
 
   return stripe.checkout.sessions.create({
