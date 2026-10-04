@@ -1,6 +1,6 @@
 const express = require('express');
 const { getPayload } = require('payload');
-const config = require('../../payload.config.ts');
+const config = require('../../payload.config');
 const logger = require('../logger');
 
 const router = express.Router();
