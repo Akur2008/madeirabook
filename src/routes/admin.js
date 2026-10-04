@@ -98,7 +98,7 @@ router.get('/', async (req, res, next) => {
       + 'border-radius:8px;margin-bottom:25px;">'
       + '<h3>Привязать объект</h3>'
       + '<form action="/admin/create-owner" method="POST">'
-      + '<input name="smoobuId" placeholder="Smoobu ID" required '
+      + '<input name="smoobuId" placeholder="Smoobu ID (необязательно, если владелец заведёт объект сам)" '
       + 'style="display:block;padding:8px;margin-bottom:8px;'
       + 'width:100%;">'
       + '<input name="email" type="email" '
@@ -135,8 +135,8 @@ router.post('/create-owner', async (req, res, next) => {
     const rnal = req.body.rnal || null;
     const pct = parseFloat(req.body.commissionPercent || '12');
 
-    if (!cleanEmail || !cleanPropId) {
-      return res.status(400).json({ error: 'email и smoobuId обязательны' });
+    if (!cleanEmail) {
+      return res.status(400).json({ error: 'email обязателен' });
     }
 
     await client.query('BEGIN');
@@ -176,12 +176,16 @@ router.post('/create-owner', async (req, res, next) => {
       await client.query('UPDATE users SET stripe_account_id = $1 WHERE id = $2', [stripeAccountId, ownerId]);
     }
 
-    // 3. Привязываем property
-    await client.query(
-      'INSERT INTO properties (smoobu_id, owner_id, commission_percent) VALUES ($1, $2, $3) '
-      + 'ON CONFLICT (smoobu_id) DO UPDATE SET owner_id = EXCLUDED.owner_id, commission_percent = EXCLUDED.commission_percent',
-      [cleanPropId, ownerId, pct]
-    );
+    // 3. Привязываем property (если smoobuId задан)
+    if (cleanPropId) {
+      await client.query(
+        'INSERT INTO properties (smoobu_id, owner_id, commission_percent) VALUES ($1, $2, $3) '
+        + 'ON CONFLICT (smoobu_id) DO UPDATE SET owner_id = EXCLUDED.owner_id, commission_percent = EXCLUDED.commission_percent',
+        [cleanPropId, ownerId, pct]
+      );
+    } else {
+      console.log('smoobuId пустой — property не создаём, владелец добавит объект через кабинет');
+    }
 
     await client.query('COMMIT');
 
