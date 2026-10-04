@@ -15,6 +15,7 @@ const telegramRoutes = require('./routes/telegram');
 const ownerRoutes = require('./routes/owner');
 const pagesRoutes = require('./routes/pages');
 const oasisRoutes = require('./routes/oasis');
+const guidesRoutes = require('./routes/guides');
 const authRoutes = require('./routes/auth');
 const bookingsRoutes = require('./routes/bookings');
 
@@ -99,6 +100,7 @@ app.use('/webhook/stripe', webhookRoutes);
 app.use('/webhook/telegram', telegramRoutes);
 app.use('/owner', ownerRoutes);
 app.use('/oasis', oasisRoutes);
+app.use('/g', guidesRoutes);
 app.use('/', pagesRoutes);
 
 // 7. Обработчик ошибок — ВСЕГДА последний
