@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../../db/client');
 const logger = require('../logger');
+const { marked } = require('marked');
 
 const router = express.Router();
 
@@ -13,15 +14,16 @@ function esc(s) {
 
 function mdToHtml(md) {
   if (!md) return '';
-  var html = esc(md);
-  html = html.replace(/^### (.+)$/gm, '<h3 class="text-xl font-bold mt-6 mb-3">$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2 class="text-2xl font-bold mt-8 mb-4">$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1 class="text-3xl font-black mt-8 mb-4">$1</h1>');
-  html = html.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
-  html = html.replace(/\\*(.+?)\\*/g, '<em>$1</em>');
-  html = html.replace(/^- (.+)$/gm, '<li class="ml-6 list-disc">$1</li>');
-  html = html.replace(/\\n\\n/g, '</p><p class="mb-4 leading-relaxed">');
-  html = '<p class="mb-4 leading-relaxed">' + html + '</p>';
+  var html = marked.parse(md, { breaks: true, gfm: true });
+  html = html.replace(/<h1>/g, '<h1 class="text-3xl font-black mt-8 mb-4">');
+  html = html.replace(/<h2>/g, '<h2 class="text-2xl font-bold mt-8 mb-4">');
+  html = html.replace(/<h3>/g, '<h3 class="text-xl font-bold mt-6 mb-3">');
+  html = html.replace(/<p>/g, '<p class="mb-4 leading-relaxed text-slate-700">');
+  html = html.replace(/<ul>/g, '<ul class="mb-4 ml-6 list-disc">');
+  html = html.replace(/<ol>/g, '<ol class="mb-4 ml-6 list-decimal">');
+  html = html.replace(/<li>/g, '<li class="mb-2">');
+  html = html.replace(/<strong>/g, '<strong class="font-bold text-slate-900">');
+  html = html.replace(/<em>/g, '<em class="italic">');
   return html;
 }
 
