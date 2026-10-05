@@ -176,7 +176,26 @@ async function cancelReservation(smoobuBookingId) {
   return smoobuRequest('PUT', `/api/reservations/${smoobuBookingId}`, { status: 'cancelled' });
 }
 
+/**
+ * Список броней (reservations) за период.
+ * @param {string} from — YYYY-MM-DD
+ * @param {string} to — YYYY-MM-DD
+ * @param {number[]} apartmentIds — опционально, массив ID объектов
+ * @returns {Promise<{total_items:number, bookings:Array}>}
+ */
+async function getReservations(from, to, apartmentIds) {
+  const query = { from, to, pageSize: 50 };
+  // apartments передаём как повторяющийся параметр через URLSearchParams
+  // но наш smoobuRequest сортирует ключи — apartments должен быть с ключом apartments
+  // Поддержим массив: если apartmentIds передан, передадим как строку через запятую
+  if (apartmentIds && apartmentIds.length) {
+    query.apartments = apartmentIds.join(',');
+  }
+  return smoobuRequest('GET', '/api/reservations', null, query);
+}
+
 module.exports = {
+  getReservations,
   getApartments,
   getApartment,
   getPrice,
