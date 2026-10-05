@@ -198,6 +198,57 @@ router.get('/p/:slug', async (req, res, next) => {
     const qDeparture = (req.query.departure || '').trim();
     const hasQueryDates = DATE_RE.test(qArrival) && DATE_RE.test(qDeparture) && qArrival < qDeparture;
 
+    // Календарь занятости на 5 месяцев
+    let calendarHtml = '';
+    if (p.smoobu_id) {
+      try {
+        const fmtD = d => d.toISOString().slice(0, 10);
+        const today = new Date();
+        const calFrom = new Date(today.getFullYear(), today.getMonth(), 1);
+        const calTo = new Date(today.getFullYear(), today.getMonth() + 5, 0);
+        const res = await pms.getReservations(fmtD(calFrom), fmtD(calTo), [Number(p.smoobu_id)]);
+        const bookings = (res && res.bookings) || [];
+        const busy = new Set();
+        for (const b of bookings) {
+          if (b.is_blocked_booking && b.is_blocked_booking !== '0') continue;
+          if (b.status === 'cancelled' || b.type === 'cancellation') continue;
+          if (!b.arrival || !b.departure) continue;
+          const from = new Date(b.arrival + 'T00:00:00Z');
+          const to = new Date(b.departure + 'T00:00:00Z');
+          for (let d = new Date(from); d < to; d.setUTCDate(d.getUTCDate() + 1)) {
+            busy.add(d.toISOString().slice(0, 10));
+          }
+        }
+        const todayStr = fmtD(today);
+        let cal = '<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">';
+        cal += '<h2 class="text-lg font-bold mb-4">Availability</h2>';
+        cal += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
+        for (let m = 0; m < 5; m++) {
+          const mDate = new Date(today.getFullYear(), today.getMonth() + m, 1);
+          const monthName = mDate.toLocaleString('en', { month: 'long', year: 'numeric' });
+          const daysInMonth = new Date(mDate.getFullYear(), mDate.getMonth() + 1, 0).getDate();
+          const firstDay = (new Date(mDate.getFullYear(), mDate.getMonth(), 1).getDay() + 6) % 7;
+          cal += '<div><div class="text-xs font-bold text-slate-500 uppercase mb-2">' + monthName + '</div>';
+          cal += '<div class="grid grid-cols-7 gap-1 text-center text-xs">';
+          for (const wd of ['M','T','W','T','F','S','S']) cal += '<div class="text-slate-400 py-1 font-medium">' + wd + '</div>';
+          for (let i = 0; i < firstDay; i++) cal += '<div></div>';
+          for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = mDate.getFullYear() + '-' + String(mDate.getMonth() + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+            let cls = 'py-1 rounded';
+            if (dateStr < todayStr) cls += ' text-slate-300';
+            else if (busy.has(dateStr)) cls += ' bg-red-100 text-red-400 line-through';
+            else cls += ' bg-emerald-50 text-emerald-700';
+            cal += '<div class="' + cls + '">' + d + '</div>';
+          }
+          cal += '</div></div>';
+        }
+        cal += '</div></div>';
+        calendarHtml = cal;
+      } catch (e) {
+        console.warn('calendar load failed:', e.message);
+      }
+    }
+
     let availabilityHtml = '';
     if (hasQueryDates && p.smoobu_id) {
       try {
@@ -304,6 +355,7 @@ router.get('/p/:slug', async (req, res, next) => {
   ${amenitiesHtml}
   ${rulesHtml}
 
+  ${calendarHtml}
   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
     <h2 class="text-lg font-bold mb-4">Book this property</h2>
     ${availabilityHtml}
