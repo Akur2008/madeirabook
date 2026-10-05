@@ -693,7 +693,7 @@ router.post('/properties/:id/edit', requireOwner, async (req, res, next) => {
     await db.query('DELETE FROM properties_rels WHERE parent_id = $1 AND amenities_id IS NOT NULL', [pid]);
     for (let i = 0; i < amenitiesIds.length; i++) {
       await db.query(
-        'INSERT INTO properties_rels (order, parent_id, path, amenities_id) VALUES ($1, $2, $3, $4)',
+        'INSERT INTO properties_rels ("order", parent_id, path, amenities_id) VALUES ($1, $2, $3, $4)',
         [i, pid, 'amenities', amenitiesIds[i]]
       );
     }
@@ -702,7 +702,7 @@ router.post('/properties/:id/edit', requireOwner, async (req, res, next) => {
     await db.query('DELETE FROM properties_rels WHERE parent_id = $1 AND house_rules_id IS NOT NULL', [pid]);
     for (let i = 0; i < houseRulesIds.length; i++) {
       await db.query(
-        'INSERT INTO properties_rels (order, parent_id, path, house_rules_id) VALUES ($1, $2, $3, $4)',
+        'INSERT INTO properties_rels ("order", parent_id, path, house_rules_id) VALUES ($1, $2, $3, $4)',
         [i, pid, 'houseRules', houseRulesIds[i]]
       );
     }
