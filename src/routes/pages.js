@@ -130,7 +130,8 @@ router.get('/p/:slug', async (req, res, next) => {
   try {
     const slug = req.params.slug;
     const r = await db.query(
-      'SELECT id, slug, title, description, smoobu_id, price_per_night, cleaning_fee, ' +
+      'SELECT id, slug, title, description, short_description, size_m2, bedrooms, bathrooms, ' +
+      'max_guests, check_in_time, check_out_time, smoobu_id, price_per_night, cleaning_fee, ' +
       'location_id, status, charges_enabled ' +
       'FROM properties WHERE slug = $1 LIMIT 1',
       [slug]
@@ -154,6 +155,51 @@ router.get('/p/:slug', async (req, res, next) => {
       [p.id]
     );
     const photos = mediaRes.rows;
+
+    const amenRes = await db.query(
+      'SELECT name FROM properties_amenities_list WHERE _parent_id = $1 ORDER BY _order',
+      [p.id]
+    );
+    const rulesRes = await db.query(
+      'SELECT text FROM properties_house_rules WHERE _parent_id = $1 ORDER BY _order',
+      [p.id]
+    );
+
+    let amenitiesHtml = '';
+    if (amenRes.rows.length) {
+      amenitiesHtml = '<section class="mb-8"><h2 class="text-xl font-bold mb-3">Amenities</h2><div class="grid grid-cols-2 md:grid-cols-3 gap-2">';
+      for (const a of amenRes.rows) {
+        amenitiesHtml += '<div class="flex items-center gap-2 text-slate-700"><span class="text-emerald-600">&#10003;</span> ' + esc(a.name) + '</div>';
+      }
+      amenitiesHtml += '</div></section>';
+    }
+
+    let rulesHtml = '';
+    if (rulesRes.rows.length) {
+      rulesHtml = '<section class="mb-8"><h2 class="text-xl font-bold mb-3">House rules</h2><ul class="space-y-1 text-slate-700">';
+      for (const r of rulesRes.rows) {
+        rulesHtml += '<li>&middot; ' + esc(r.text) + '</li>';
+      }
+      rulesHtml += '</ul></section>';
+    }
+
+    let detailsHtml = '';
+    const details = [];
+    if (p.size_m2) details.push(p.size_m2 + ' m²');
+    if (p.bedrooms) details.push(p.bedrooms + ' bedroom' + (p.bedrooms > 1 ? 's' : ''));
+    if (p.bathrooms) details.push(p.bathrooms + ' bathroom' + (p.bathrooms > 1 ? 's' : ''));
+    if (p.max_guests) details.push('up to ' + p.max_guests + ' guests');
+    if (details.length) {
+      detailsHtml = '<div class="flex flex-wrap gap-3 mb-6 text-sm text-slate-600">' + details.map(d => '<span class="px-3 py-1 bg-slate-100 rounded-full">' + d + '</span>').join('') + '</div>';
+    }
+
+    let timesHtml = '';
+    if (p.check_in_time || p.check_out_time) {
+      timesHtml = '<div class="flex gap-6 mb-6 text-sm text-slate-600">'
+        + (p.check_in_time ? '<div><span class="text-slate-400">Check-in</span> <b>' + esc(p.check_in_time) + '</b></div>' : '')
+        + (p.check_out_time ? '<div><span class="text-slate-400">Check-out</span> <b>' + esc(p.check_out_time) + '</b></div>' : '')
+        + '</div>';
+    }
 
     let gallery = '';
     if (photos.length) {
@@ -185,6 +231,10 @@ router.get('/p/:slug', async (req, res, next) => {
     <span class="text-sm font-medium">Listen to the sound of this place</span>
   </a>
   ${p.description ? '<p class="text-slate-700 leading-relaxed mb-6 whitespace-pre-line">' + esc(p.description) + '</p>' : '<div class="mb-6"></div>'}
+  ${detailsHtml}
+  ${timesHtml}
+  ${amenitiesHtml}
+  ${rulesHtml}
 
   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
     <h2 class="text-lg font-bold mb-4">Book this property</h2>
