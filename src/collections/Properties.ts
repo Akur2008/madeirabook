@@ -26,6 +26,12 @@ export const Properties: CollectionConfig = {
       type: 'textarea',
     },
     {
+      name: 'shortDescription',
+      type: 'textarea',
+      maxLength: 300,
+      admin: { description: 'Короткое описание до 300 символов для карточки на главной' },
+    },
+    {
       name: 'brand',
       type: 'select',
       required: true,
@@ -73,6 +79,41 @@ export const Properties: CollectionConfig = {
       type: 'number',
     },
     {
+      name: 'sizeM2',
+      type: 'number',
+      admin: { description: 'Площадь в м²' },
+    },
+    {
+      name: 'bedrooms',
+      type: 'number',
+      defaultValue: 1,
+      admin: { description: 'Количество спален' },
+    },
+    {
+      name: 'bathrooms',
+      type: 'number',
+      defaultValue: 1,
+      admin: { description: 'Количество ванных комнат' },
+    },
+    {
+      name: 'maxGuests',
+      type: 'number',
+      defaultValue: 2,
+      admin: { description: 'Максимум гостей' },
+    },
+    {
+      name: 'checkInTime',
+      type: 'text',
+      defaultValue: '15:00',
+      admin: { description: 'Время заезда' },
+    },
+    {
+      name: 'checkOutTime',
+      type: 'text',
+      defaultValue: '11:00',
+      admin: { description: 'Время выезда' },
+    },
+    {
       name: 'location',
       type: 'relationship',
       relationTo: 'locations',
@@ -104,6 +145,24 @@ export const Properties: CollectionConfig = {
           relationTo: 'media',
         },
       ],
+    },
+    {
+      name: 'amenitiesList',
+      type: 'array',
+      labels: { singular: 'Amenity', plural: 'Amenities' },
+      fields: [
+        { name: 'name', type: 'text', required: true },
+      ],
+      admin: { description: 'Быстрый список удобств для отображения' },
+    },
+    {
+      name: 'houseRules',
+      type: 'array',
+      labels: { singular: 'Rule', plural: 'Rules' },
+      fields: [
+        { name: 'text', type: 'text', required: true },
+      ],
+      admin: { description: 'Правила дома' },
     },
     {
       name: 'featured',
