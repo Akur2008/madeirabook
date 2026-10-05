@@ -864,6 +864,8 @@ router.get('/calendar', requireOwner, async (req, res, next) => {
     const bookingsJson = JSON.stringify(bookings);
     const ratesJson = JSON.stringify(rates);
 
+    const apartmentsOptions = '<option value="all">All apartments</option>' + props.map(pr => '<option value="' + pr.smoobu_id + '">' + ownerEscapeHtml(pr.title || pr.smoobu_id) + '</option>').join('');
+
     const warn = smoobuError ? '<div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3">Could not load Smoobu data: ' + ownerEscapeHtml(smoobuError) + '</div>' : '';
 
     res.send(`<!DOCTYPE html>
@@ -1165,8 +1167,7 @@ render();
       <div>
         <label class="block text-xs font-medium text-slate-500 mb-1">Apartment</label>
         <select id="rmApartments" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
-          <option value="all">All apartments</option>
-          ${PROPS.map(p => '<option value="' + p.smoobuId + '">' + p.title + '</option>').join('')}
+          ${apartmentsOptions}
         </select>
       </div>
 
