@@ -194,7 +194,44 @@ async function getReservations(from, to, apartmentIds) {
   return smoobuRequest('GET', '/api/reservations', null, query);
 }
 
+/**
+ * Цены по дням для объекта.
+ * @param {number[]} apartmentIds — массив ID объектов
+ * @param {string} startDate — YYYY-MM-DD
+ * @param {string} endDate — YYYY-MM-DD
+ * @returns {Promise<{data:{[apartmentId]:{[date]:{price,min_length_of_stay,available}}}}>}
+ */
+async function getRates(apartmentIds, startDate, endDate) {
+  const query = {
+    'apartments[]': apartmentIds.join('&apartments[]='),
+    'end_date': endDate,
+    'start_date': startDate
+  };
+  return smoobuRequest('GET', '/api/rates', null, query);
+}
+
+/**
+ * Установить цены для объекта на список дат.
+ * @param {number[]} apartmentIds
+ * @param {string[]} dates — массив YYYY-MM-DD
+ * @param {number} dailyPrice
+ * @param {number} minLengthOfStay
+ */
+async function setRates(apartmentIds, dates, dailyPrice, minLengthOfStay) {
+  const body = {
+    apartments: apartmentIds,
+    dates: dates,
+    daily_price: dailyPrice
+  };
+  if (minLengthOfStay && minLengthOfStay > 0) {
+    body.min_length_of_stay = minLengthOfStay;
+  }
+  return smoobuRequest('POST', '/api/rates', body);
+}
+
 module.exports = {
+  getRates,
+  setRates,
   getReservations,
   getApartments,
   getApartment,

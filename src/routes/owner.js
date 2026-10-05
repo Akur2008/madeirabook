@@ -804,10 +804,26 @@ router.get('/calendar', requireOwner, async (req, res, next) => {
     let smoobuError = null;
     try {
       const r = await pms.getReservations(fromStr, toStr);
-      smoobuBookings = (r.bookings || []).filter(b => !b['is-blocked-booking']);
+      smoobuBookings = (r.bookings || []).filter(b =>
+        !b['is-blocked-booking'] &&
+        b.type !== 'cancellation' &&
+        b.status !== 'cancelled'
+      );
     } catch (e) {
       smoobuError = e.message;
       logger.warn({ err: e.message }, 'smoobu getReservations failed');
+    }
+
+    // Тянем цены из Smoobu
+    let rates = {};
+    try {
+      const smoobuIdList = props.map(p => Number(p.smoobu_id)).filter(Boolean);
+      if (smoobuIdList.length) {
+        const r = await pms.getRates(smoobuIdList, fromStr, toStr);
+        rates = (r && r.data) ? r.data : {};
+      }
+    } catch (e) {
+      logger.warn({ err: e.message }, 'smoobu getRates failed');
     }
 
     // Сопоставляем Smoobu bookings с нашими properties
@@ -846,6 +862,7 @@ router.get('/calendar', requireOwner, async (req, res, next) => {
       id: p.id, title: p.title || ('Object ' + p.smoobu_id), basePrice: p.price_per_night, smoobuId: p.smoobu_id
     })));
     const bookingsJson = JSON.stringify(bookings);
+    const ratesJson = JSON.stringify(rates);
 
     const warn = smoobuError ? '<div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3">Could not load Smoobu data: ' + ownerEscapeHtml(smoobuError) + '</div>' : '';
 
@@ -907,6 +924,7 @@ router.get('/calendar', requireOwner, async (req, res, next) => {
 <script>
 const PROPS = ${propsJson};
 const BOOKINGS = ${bookingsJson};
+const RATES = ${ratesJson};
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 let currentDate = new Date();
 currentDate.setDate(1);
@@ -978,8 +996,12 @@ function render() {
         return dtStr >= b.arrival && dtStr < b.departure;
       });
 
+      const rateForDay = (RATES[String(prop.smoobuId)] || {})[dtStr];
       html += '<td class="' + cls + '" onclick="dayClick(\\'' + dtStr + '\\', ' + prop.id + ')">';
       html += '<span class="cal-day-num">' + d + '</span>';
+      if (rateForDay && rateForDay.price != null) {
+        html += '<span style="position:absolute;bottom:1px;right:3px;font-size:10px;color:#0f172a;font-weight:600;">' + Math.round(rateForDay.price) + '</span>';
+      }
       if (bk) {
         html += '<div class="cal-booking" style="background:' + bk.channelColor + '" onclick="event.stopPropagation();showBooking(' + bk.id + ')" title="' + bk.channel + ': ' + bk.guestName + '"></div>';
       }
