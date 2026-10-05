@@ -1137,7 +1137,7 @@ render();
 <div id="ratesModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
     <div class="flex justify-between items-start mb-4">
-      <h3 class="text-lg font-black">Change rates</h3>
+      <div><h3 class="text-lg font-black">Change rates</h3><p class="text-xs text-amber-600 mt-1">Read-only пока не подтверждён формат записи от Smoobu</p></div>
       <button onclick="closeRatesModal()" class="text-slate-400 hover:text-slate-800 text-xl leading-none">&times;</button>
     </div>
 
@@ -1196,7 +1196,7 @@ render();
 
       <div class="flex gap-2 pt-2">
         <button onclick="closeRatesModal()" class="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>
-        <button id="rmSubmit" onclick="submitRates()" class="flex-1 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold">Save</button>
+        <button disabled title="В разработке — ждём от Smoobu подтверждения формата POST /api/rates" class="flex-1 px-4 py-2 rounded-lg bg-slate-200 text-slate-500 font-bold cursor-not-allowed">Save (coming soon)</button>
       </div>
     </div>
   </div>
