@@ -131,6 +131,31 @@ async function getPrice(propertyId, arrivalDate, departureDate) {
 }
 
 /**
+ * Массовая проверка доступности + цены для списка объектов.
+ * Возвращает { [id]: { available: bool, price?: number, currency?: string } }.
+ */
+async function checkAvailability(apartmentIds, arrivalDate, departureDate) {
+  const customerId = Number(config.SMOOBU_USER_ID);
+  const ids = (apartmentIds || []).map(Number).filter(Number.isFinite);
+  if (!ids.length) return {};
+  const body = { arrivalDate, departureDate, apartments: ids, customerId };
+  const res = await smoobuRequest('POST', '/booking/checkApartmentAvailability', body);
+  const prices = (res && res.prices) || {};
+  const errors = (res && res.errorMessages) || {};
+  const result = {};
+  for (const id of ids) {
+    const key = String(id);
+    const entry = prices[key];
+    if (entry && Number.isFinite(Number(entry.price))) {
+      result[id] = { available: true, price: Number(entry.price), currency: entry.currency || 'EUR' };
+    } else {
+      result[id] = { available: false, reason: errors[key] || null };
+    }
+  }
+  return result;
+}
+
+/**
  * Создание брони.
  */
 async function createReservation(p) {
@@ -245,6 +270,7 @@ async function setRates(apartmentIds, dates, dailyPrice, minLengthOfStay) {
 }
 
 module.exports = {
+  checkAvailability,
   getRates,
   setRates,
   getReservations,

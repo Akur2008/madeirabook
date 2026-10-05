@@ -1,13 +1,20 @@
 
 const express = require('express');
 const db = require('../../db/client');
+const pms = require('../services/pms/smoobu');
 
 const router = express.Router();
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 router.get('/', async (req, res, next) => {
   try {
+    const arrival = (req.query.arrival || '').trim();
+    const departure = (req.query.departure || '').trim();
+    const hasDates = DATE_RE.test(arrival) && DATE_RE.test(departure) && arrival < departure;
+
     const r = await db.query(
-      `SELECT p.id, p.slug, p.title, p.price_per_night, p.cleaning_fee,
+      `SELECT p.id, p.slug, p.title, p.price_per_night, p.cleaning_fee, p.smoobu_id,
               (SELECT m.url FROM properties_media pm
                JOIN media m ON m.id = pm.image_id
                WHERE pm._parent_id = p.id ORDER BY pm._order LIMIT 1) AS cover
@@ -16,19 +23,43 @@ router.get('/', async (req, res, next) => {
        ORDER BY p.featured DESC NULLS LAST, p.id DESC
        LIMIT 60`
     );
-    const props = r.rows;
+    let props = r.rows;
+
+    // Фильтр по датам через Smoobu
+    let availMap = null;
+    let searchErr = '';
+    if (hasDates) {
+      const smoobuIds = props.filter(x => x.smoobu_id).map(x => Number(x.smoobu_id));
+      try {
+        availMap = await pms.checkAvailability(smoobuIds, arrival, departure);
+      } catch (e) {
+        console.warn('availability check failed:', e.message);
+        searchErr = 'Could not check availability, showing all properties.';
+      }
+      if (availMap) {
+        props = props.filter(x => !x.smoobu_id || (availMap[Number(x.smoobu_id)] && availMap[Number(x.smoobu_id)].available));
+      }
+    }
 
     let cards = '';
     for (const p of props) {
-      const price = p.price_per_night ? Number(p.price_per_night).toFixed(0) : '—';
+      let priceLine;
+      if (hasDates && availMap && p.smoobu_id && availMap[Number(p.smoobu_id)]) {
+        const total = availMap[Number(p.smoobu_id)].price;
+        priceLine = Number(total).toFixed(0) + ' EUR total';
+      } else {
+        const price = p.price_per_night ? Number(p.price_per_night).toFixed(0) + ' EUR / night' : 'Price on request';
+        priceLine = price;
+      }
       const img = p.cover
         ? '<img src="' + esc(p.cover) + '" alt="' + esc(p.title) + '" class="w-full h-48 object-cover rounded-t-2xl">'
         : '<div class="w-full h-48 bg-slate-100 rounded-t-2xl flex items-center justify-center text-slate-400 text-sm">no photo</div>';
-      cards += '<a href="/p/' + esc(p.slug) + '" class="block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">'
+      const url = '/p/' + esc(p.slug) + (hasDates ? '?arrival=' + esc(arrival) + '&departure=' + esc(departure) : '');
+      cards += '<a href="' + url + '" class="block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">'
         + img
         + '<div class="p-4">'
         + '<h3 class="font-bold text-lg mb-1">' + esc(p.title) + '</h3>'
-        + '<p class="text-slate-500 text-sm">' + price + ' EUR / night</p>'
+        + '<p class="text-slate-500 text-sm">' + priceLine + '</p>'
         + '</div></a>';
     }
 
@@ -44,9 +75,24 @@ router.get('/', async (req, res, next) => {
     <p class="text-slate-500">Book unique stays in Madeira, direct from owners.</p>
   </header>
 
-  <h2 class="text-sm uppercase font-bold text-slate-500 mb-4">Available properties</h2>
+  <form method="GET" action="/" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-8 flex flex-wrap items-end gap-3">
+    <div class="flex-1 min-w-[160px]">
+      <label class="block text-xs uppercase text-slate-500 mb-1">Arrival</label>
+      <input type="date" name="arrival" value="${esc(arrival)}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+    </div>
+    <div class="flex-1 min-w-[160px]">
+      <label class="block text-xs uppercase text-slate-500 mb-1">Departure</label>
+      <input type="date" name="departure" value="${esc(departure)}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+    </div>
+    <button type="submit" class="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6">Search</button>
+    ${hasDates ? '<a href="/" class="text-sm text-slate-500 hover:underline py-2">Clear</a>' : ''}
+  </form>
+
+  ${searchErr ? '<div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3">' + esc(searchErr) + '</div>' : ''}
+
+  <h2 class="text-sm uppercase font-bold text-slate-500 mb-4">${hasDates ? 'Available ' + esc(arrival) + ' → ' + esc(departure) : 'Available properties'}</h2>
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    ${cards || '<p class="text-slate-400">No properties yet</p>'}
+    ${cards || '<p class="text-slate-400">No properties available for these dates</p>'}
   </div>
 
   <footer class="mt-16 pt-6 border-t border-slate-200 text-xs text-slate-400 flex flex-wrap gap-4">
@@ -148,6 +194,28 @@ router.get('/p/:slug', async (req, res, next) => {
     const priceEuro = p.price_per_night ? Number(p.price_per_night).toFixed(0) : '—';
     const cleaning = p.cleaning_fee ? Number(p.cleaning_fee).toFixed(0) : '0';
 
+    const qArrival = (req.query.arrival || '').trim();
+    const qDeparture = (req.query.departure || '').trim();
+    const hasQueryDates = DATE_RE.test(qArrival) && DATE_RE.test(qDeparture) && qArrival < qDeparture;
+
+    let availabilityHtml = '';
+    if (hasQueryDates && p.smoobu_id) {
+      try {
+        const av = await pms.checkAvailability([Number(p.smoobu_id)], qArrival, qDeparture);
+        const entry = av[Number(p.smoobu_id)];
+        if (entry && entry.available) {
+          availabilityHtml = '<div class="rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm px-4 py-3 mb-4">'
+            + '&#10003; Available ' + esc(qArrival) + ' → ' + esc(qDeparture)
+            + ' &middot; <strong>' + Number(entry.price).toFixed(0) + ' EUR total</strong></div>';
+        } else {
+          availabilityHtml = '<div class="rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3 mb-4">'
+            + 'Not available for ' + esc(qArrival) + ' → ' + esc(qDeparture) + '</div>';
+        }
+      } catch (e) {
+        console.warn('availability check failed:', e.message);
+      }
+    }
+
     const mediaRes = await db.query(
       'SELECT m.url, m.alt FROM properties_media pm '
       + 'JOIN media m ON m.id = pm.image_id '
@@ -238,15 +306,16 @@ router.get('/p/:slug', async (req, res, next) => {
 
   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
     <h2 class="text-lg font-bold mb-4">Book this property</h2>
+    ${availabilityHtml}
     <form id="bookForm" class="space-y-4">
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-xs uppercase text-slate-500 mb-1">Arrival</label>
-          <input type="date" name="arrivalDate" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <input type="date" name="arrivalDate" required value="${esc(qArrival)}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
         </div>
         <div>
           <label class="block text-xs uppercase text-slate-500 mb-1">Departure</label>
-          <input type="date" name="departureDate" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <input type="date" name="departureDate" required value="${esc(qDeparture)}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
         </div>
       </div>
       <div class="grid grid-cols-2 gap-3">
