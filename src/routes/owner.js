@@ -1045,10 +1045,260 @@ document.getElementById('bkPopup').addEventListener('click', e => {
   if (e.target.id === 'bkPopup') closePopup();
 });
 
+// === RATES EDIT MODAL ===
+function openRatesModal(dateStr, propId) {
+  const prop = PROPS.find(p => p.id === propId);
+  if (!prop) return;
+  document.getElementById('rmFirstDay').value = dateStr;
+  document.getElementById('rmLastDay').value = dateStr;
+  document.getElementById('rmPrice').value = '';
+  document.getElementById('rmMinNights').value = '';
+  document.getElementById('rmApartments').value = String(prop.smoobuId);
+  document.getElementById('rmErr').classList.add('hidden');
+  document.getElementById('rmSuccess').classList.add('hidden');
+  // Сбрасываем чекбоксы дней на все
+  document.querySelectorAll('.rm-day').forEach(cb => cb.checked = true);
+  document.getElementById('ratesModal').classList.remove('hidden');
+}
+
+function closeRatesModal() {
+  document.getElementById('ratesModal').classList.add('hidden');
+}
+
+function setAllDays(checked) {
+  document.querySelectorAll('.rm-day').forEach(cb => cb.checked = checked);
+}
+
+async function submitRates() {
+  const firstDay = document.getElementById('rmFirstDay').value;
+  const lastDay = document.getElementById('rmLastDay').value;
+  const price = document.getElementById('rmPrice').value;
+  const minNights = document.getElementById('rmMinNights').value;
+  const apartments = document.getElementById('rmApartments').value;
+  const daysOfWeek = Array.from(document.querySelectorAll('.rm-day:checked')).map(cb => Number(cb.value));
+  const err = document.getElementById('rmErr');
+  const success = document.getElementById('rmSuccess');
+  const btn = document.getElementById('rmSubmit');
+
+  err.classList.add('hidden');
+  success.classList.add('hidden');
+
+  if (!firstDay || !lastDay || !price) {
+    err.textContent = 'Заполните First day, Last day и Price';
+    err.classList.remove('hidden');
+    return;
+  }
+  if (!daysOfWeek.length) {
+    err.textContent = 'Выберите хотя бы один день недели';
+    err.classList.remove('hidden');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    const r = await fetch('/owner/rates/set', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstDay, lastDay, price, minNights, daysOfWeek, apartments })
+    });
+    const data = await r.json();
+    if (!r.ok || !data.ok) {
+      throw new Error(data.error || 'Save failed');
+    }
+    success.textContent = 'Обновлено объектов: ' + data.updated + ' / дат: ' + data.datesCount + '. Перезагрузка...';
+    success.classList.remove('hidden');
+    setTimeout(() => location.reload(), 1200);
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Save';
+  }
+}
+
+document.getElementById('ratesModal').addEventListener('click', e => {
+  if (e.target.id === 'ratesModal') closeRatesModal();
+});
+
+// Повесим openRatesModal на dayClick
+function dayClick(dateStr, propId) {
+  openRatesModal(dateStr, propId);
+}
+
 initMonthSelect();
 render();
 </script>
+
+<!-- Rates Edit Modal -->
+<div id="ratesModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
+    <div class="flex justify-between items-start mb-4">
+      <h3 class="text-lg font-black">Change rates</h3>
+      <button onclick="closeRatesModal()" class="text-slate-400 hover:text-slate-800 text-xl leading-none">&times;</button>
+    </div>
+
+    <div class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">First day</label>
+          <input type="date" id="rmFirstDay" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">Last day</label>
+          <input type="date" id="rmLastDay" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">Price (€)</label>
+          <input type="number" id="rmPrice" min="1" step="1" placeholder="120" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">Min nights (опц.)</label>
+          <input type="number" id="rmMinNights" min="1" step="1" placeholder="—" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1">Apartment</label>
+        <select id="rmApartments" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+          <option value="all">All apartments</option>
+          ${PROPS.map(p => '<option value="' + p.smoobuId + '">' + p.title + '</option>').join('')}
+        </select>
+      </div>
+
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <label class="block text-xs font-medium text-slate-500">Days of week</label>
+          <div class="text-xs">
+            <button type="button" onclick="setAllDays(true)" class="text-emerald-700 hover:underline">All</button>
+            <span class="text-slate-300 mx-1">·</span>
+            <button type="button" onclick="setAllDays(false)" class="text-slate-500 hover:underline">None</button>
+          </div>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="1" checked>Mo</label>
+          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="2" checked>Tu</label>
+          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="3" checked>We</label>
+          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="4" checked>Th</label>
+          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="5" checked>Fr</label>
+          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="6" checked>Sa</label>
+          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="0" checked>Su</label>
+        </div>
+      </div>
+
+      <p id="rmErr" class="hidden text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg"></p>
+      <p id="rmSuccess" class="hidden text-sm text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg"></p>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeRatesModal()" class="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>
+        <button id="rmSubmit" onclick="submitRates()" class="flex-1 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body></html>`);
+  } catch (e) {
+    next(e);
+  }
+});
+
+
+// === SET RATES (write to Smoobu) ===
+
+router.post('/rates/set', requireOwner, async (req, res, next) => {
+  try {
+    const { firstDay, lastDay, price, minNights, daysOfWeek, apartments } = req.body;
+
+    if (!firstDay || !lastDay || price == null) {
+      return res.status(400).json({ error: 'firstDay, lastDay, price обязательны' });
+    }
+
+    const priceNum = parseFloat(price);
+    if (!isFinite(priceNum) || priceNum <= 0) {
+      return res.status(400).json({ error: 'Цена должна быть больше 0' });
+    }
+
+    const minNightsNum = minNights ? parseInt(minNights, 10) : null;
+
+    // Владелец может менять только свои объекты
+    const propsRes = await db.query(
+      'SELECT id, smoobu_id FROM properties WHERE owner_id = $1 AND smoobu_id IS NOT NULL',
+      [req.owner.id]
+    );
+    const ownerProps = propsRes.rows;
+    const ownerSmoobuIds = ownerProps.map(p => Number(p.smoobu_id));
+
+    if (!ownerSmoobuIds.length) {
+      return res.status(400).json({ error: 'У вас нет объектов с Smoobu ID' });
+    }
+
+    // Какие объекты менять
+    let targetIds = ownerSmoobuIds;
+    if (apartments && apartments !== 'all') {
+      const requested = Array.isArray(apartments) ? apartments : [apartments];
+      targetIds = requested.map(Number).filter(id => ownerSmoobuIds.includes(id));
+    }
+    if (!targetIds.length) {
+      return res.status(400).json({ error: 'Не выбрано ни одного объекта' });
+    }
+
+    // Генерируем список дат
+    const start = new Date(firstDay + 'T00:00:00Z');
+    const end = new Date(lastDay + 'T00:00:00Z');
+    if (isNaN(start) || isNaN(end) || end < start) {
+      return res.status(400).json({ error: 'Неверный диапазон дат' });
+    }
+    if ((end - start) / 86400000 > 730) {
+      return res.status(400).json({ error: 'Диапазон не может превышать 2 года' });
+    }
+
+    const days = Array.isArray(daysOfWeek) && daysOfWeek.length
+      ? daysOfWeek.map(Number)
+      : [0,1,2,3,4,5,6];
+
+    const dates = [];
+    let cur = new Date(start);
+    while (cur <= end) {
+      if (days.includes(cur.getUTCDay())) {
+        dates.push(cur.toISOString().slice(0, 10));
+      }
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+
+    if (!dates.length) {
+      return res.status(400).json({ error: 'Не выбрано ни одной даты с такими днями недели' });
+    }
+
+    // Отправляем в Smoobu (по одному объекту — API не принимает массив)
+    const results = [];
+    for (const aptId of targetIds) {
+      try {
+        await pms.setRates([aptId], dates, priceNum, minNightsNum);
+        results.push({ apartment: aptId, ok: true, dates: dates.length });
+      } catch (e) {
+        logger.error({ err: e.message, aptId }, 'setRates failed for apartment');
+        results.push({ apartment: aptId, ok: false, error: e.message });
+      }
+      await new Promise(r => setTimeout(r, 250));
+    }
+
+    const okCount = results.filter(r => r.ok).length;
+    logger.info(
+      { ownerId: req.owner.id, apartments: targetIds, dates: dates.length, ok: okCount },
+      'rates updated'
+    );
+
+    res.json({
+      ok: okCount > 0,
+      updated: okCount,
+      total: targetIds.length,
+      datesCount: dates.length,
+      apartments: results
+    });
   } catch (e) {
     next(e);
   }
