@@ -287,6 +287,7 @@ router.get('/', requireOwner, async (req, res, next) => {
       <p class="text-slate-500 text-sm">${ownerEscapeHtml(req.owner.email)}</p>
     </div>
     <div class="flex items-center gap-3">
+      <a href="/owner/calendar" class="text-sm font-medium text-emerald-700 hover:text-emerald-900">📅 Calendar</a>
       <a href="/owner/properties/new" class="text-sm font-medium text-emerald-700 hover:text-emerald-900">+ Add property</a>
       <a href="/owner/connect-stripe" class="text-sm font-medium text-emerald-700 hover:text-emerald-900">Manage payouts</a>
       <form method="POST" action="/owner/logout">
@@ -767,6 +768,201 @@ router.get("/connect-stripe", requireOwner, async (req, res, next) => {
     );
 
     return res.redirect(303, link.url);
+  } catch (e) {
+    next(e);
+  }
+});
+
+
+// === OWNER CALENDAR (read-only MVP) ===
+
+router.get('/calendar', requireOwner, async (req, res, next) => {
+  try {
+    const propsRes = await db.query(
+      'SELECT id, slug, title, smoobu_id, price_per_night FROM properties WHERE owner_id = $1 ORDER BY id',
+      [req.owner.id]
+    );
+    const props = propsRes.rows;
+
+    const bookingsRes = await db.query(
+      `SELECT b.id, b.property_id, b.arrival_date, b.departure_date,
+              b.guest_email, b.amount_cents, b.status, b.smoobu_booking_id
+       FROM bookings b
+       JOIN properties p ON p.id = b.property_id
+       WHERE p.owner_id = $1
+         AND b.departure_date >= NOW() - INTERVAL '30 days'
+         AND b.arrival_date <= NOW() + INTERVAL '12 months'
+         AND b.status IN ('paid','pending')
+       ORDER BY b.arrival_date`,
+      [req.owner.id]
+    );
+    const bookings = bookingsRes.rows;
+
+    // Готовим данные для JS
+    const propsJson = JSON.stringify(props.map(p => ({
+      id: p.id, title: p.title || p.smoobu_id || ('#' + p.id), basePrice: p.price_per_night
+    })));
+    const bookingsJson = JSON.stringify(bookings.map(b => ({
+      id: b.id,
+      propertyId: b.property_id,
+      arrival: b.arrival_date,
+      departure: b.departure_date,
+      guest: b.guest_email,
+      amount: b.amount_cents,
+      status: b.status,
+      smoobu: b.smoobu_booking_id
+    })));
+
+    res.send(`<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendar — Madeirabook Owner</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .cal-cell { min-width: 56px; height: 56px; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; position: relative; }
+  .cal-cell:hover { background: #f8fafc; }
+  .cal-cell.today { background: #ecfdf5; }
+  .cal-cell.booked { background: #fef3c7; }
+  .cal-booking-bar { position: absolute; left: 2px; right: 2px; top: 50%; transform: translateY(-50%); height: 8px; border-radius: 4px; cursor: pointer; }
+  .cal-day-num { position: absolute; top: 2px; left: 4px; font-size: 10px; color: #94a3b8; }
+  .cal-price { position: absolute; bottom: 2px; right: 4px; font-size: 10px; color: #64748b; font-weight: 600; }
+</style>
+</head>
+<body class="bg-slate-50 min-h-screen p-6">
+<div class="max-w-7xl mx-auto">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <a href="/owner" class="text-sm text-slate-500 hover:text-slate-800">&larr; Owner cabinet</a>
+      <h1 class="text-2xl font-black mt-2">Pricing calendar</h1>
+      <p class="text-slate-500 text-sm">${ownerEscapeHtml(req.owner.email)}</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="shiftMonth(-1)" class="px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50">&larr; Prev</button>
+      <span id="monthLabel" class="font-bold text-lg min-w-[140px] text-center"></span>
+      <button onclick="shiftMonth(1)" class="px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50">Next &rarr;</button>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-auto">
+    <div id="calWrap"></div>
+  </div>
+
+  <p class="text-xs text-slate-400 mt-4">Read-only. Bookings from Smoobu + direct bookings. Editing prices coming soon.</p>
+</div>
+
+<!-- Popup для деталей брони -->
+<div id="bkPopup" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+    <div class="flex justify-between items-start mb-4">
+      <h3 class="text-lg font-black">Booking details</h3>
+      <button onclick="closePopup()" class="text-slate-400 hover:text-slate-800">&times;</button>
+    </div>
+    <div id="bkBody" class="space-y-2 text-sm"></div>
+  </div>
+</div>
+
+<script>
+const PROPS = ${propsJson};
+const BOOKINGS = ${bookingsJson};
+let currentDate = new Date();
+currentDate.setDate(1);
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function fmtDate(d) {
+  const dt = new Date(d);
+  return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+}
+
+function dayKey(d) { return fmtDate(d); }
+
+function shiftMonth(delta) {
+  currentDate.setMonth(currentDate.getMonth() + delta);
+  render();
+}
+
+function render() {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  document.getElementById('monthLabel').textContent = MONTHS[month] + ' ' + year;
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  let html = '<table style="border-collapse:collapse;width:100%;min-width:900px;"><thead><tr>';
+  html += '<th style="text-align:left;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;position:sticky;left:0;z-index:2;">Property</th>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dt = new Date(year, month, d);
+    const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+    html += '<th style="padding:6px 2px;background:' + (isWeekend ? '#f1f5f9' : '#f8fafc') + ';border-bottom:1px solid #e2e8f0;font-size:11px;color:#64748b;font-weight:600;">' + d + '</th>';
+  }
+  html += '</tr></thead><tbody>';
+
+  for (const prop of PROPS) {
+    html += '<tr>';
+    html += '<td style="padding:12px;background:#fff;border-bottom:1px solid #e2e8f0;position:sticky;left:0;z-index:1;font-weight:600;white-space:nowrap;">' + prop.title + '</td>';
+    
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dt = new Date(year, month, d);
+      const dtStr = fmtDate(dt);
+      const isToday = dt.getTime() === today.getTime();
+      
+      // Ищем бронь, которая покрывает этот день
+      const bk = BOOKINGS.find(b => {
+        if (b.propertyId !== prop.id) return false;
+        const arr = new Date(b.arrival); arr.setHours(0,0,0,0);
+        const dep = new Date(b.departure); dep.setHours(0,0,0,0);
+        return dt >= arr && dt < dep;
+      });
+      
+      let cls = 'cal-cell';
+      if (isToday) cls += ' today';
+      if (bk) cls += ' booked';
+      
+      html += '<td class="' + cls + '">';
+      html += '<span class="cal-day-num">' + d + '</span>';
+      if (bk) {
+        const color = bk.status === 'paid' ? '#10b981' : '#f59e0b';
+        html += '<div class="cal-booking-bar" style="background:' + color + '" onclick=\\'showBooking(' + bk.id + ')\\'></div>';
+      }
+      html += '</td>';
+    }
+    html += '</tr>';
+  }
+
+  html += '</tbody></table>';
+  document.getElementById('calWrap').innerHTML = html;
+}
+
+function showBooking(id) {
+  const bk = BOOKINGS.find(b => b.id === id);
+  if (!bk) return;
+  const prop = PROPS.find(p => p.id === bk.propertyId);
+  const arr = new Date(bk.arrival).toISOString().slice(0,10);
+  const dep = new Date(bk.departure).toISOString().slice(0,10);
+  const amount = (bk.amount/100).toFixed(2);
+  document.getElementById('bkBody').innerHTML = 
+    '<p><b>Property:</b> ' + (prop ? prop.title : '#') + '</p>' +
+    '<p><b>Guest:</b> ' + (bk.guest || '—') + '</p>' +
+    '<p><b>Arrival:</b> ' + arr + '</p>' +
+    '<p><b>Departure:</b> ' + dep + '</p>' +
+    '<p><b>Amount:</b> €' + amount + '</p>' +
+    '<p><b>Status:</b> ' + bk.status + '</p>' +
+    (bk.smoobu ? '<p><b>Smoobu ID:</b> ' + bk.smoobu + '</p>' : '');
+  document.getElementById('bkPopup').classList.remove('hidden');
+}
+
+function closePopup() {
+  document.getElementById('bkPopup').classList.add('hidden');
+}
+
+document.getElementById('bkPopup').addEventListener('click', e => {
+  if (e.target.id === 'bkPopup') closePopup();
+});
+
+render();
+</script>
+</body></html>`);
   } catch (e) {
     next(e);
   }
