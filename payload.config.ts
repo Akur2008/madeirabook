@@ -2,6 +2,7 @@ import { buildConfig } from 'payload'
 import { postgresAdapter } from '@payloadcms/db-postgres'
 
 import { Amenities } from './src/collections/Amenities.ts'
+import { HouseRules } from './src/collections/HouseRules.ts'
 import { Bookings } from './src/collections/Bookings.ts'
 import { CommissionHistory } from './src/collections/CommissionHistory.ts'
 import { Locations } from './src/collections/Locations.ts'
@@ -21,6 +22,7 @@ export default buildConfig({
     Users,
     Media,
     Amenities,
+    HouseRules,
     Locations,
     Properties,
     Bookings,

@@ -125,6 +125,12 @@ export const Properties: CollectionConfig = {
       hasMany: true,
     },
     {
+      name: 'houseRules',
+      type: 'relationship',
+      relationTo: 'house-rules',
+      hasMany: true,
+    },
+    {
       name: 'media',
       type: 'array',
       fields: [
@@ -145,24 +151,6 @@ export const Properties: CollectionConfig = {
           relationTo: 'media',
         },
       ],
-    },
-    {
-      name: 'amenitiesList',
-      type: 'array',
-      labels: { singular: 'Amenity', plural: 'Amenities' },
-      fields: [
-        { name: 'name', type: 'text', required: true },
-      ],
-      admin: { description: 'Быстрый список удобств для отображения' },
-    },
-    {
-      name: 'houseRules',
-      type: 'array',
-      labels: { singular: 'Rule', plural: 'Rules' },
-      fields: [
-        { name: 'text', type: 'text', required: true },
-      ],
-      admin: { description: 'Правила дома' },
     },
     {
       name: 'featured',
