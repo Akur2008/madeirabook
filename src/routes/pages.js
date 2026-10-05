@@ -157,11 +157,11 @@ router.get('/p/:slug', async (req, res, next) => {
     const photos = mediaRes.rows;
 
     const amenRes = await db.query(
-      'SELECT name FROM properties_amenities_list WHERE _parent_id = $1 ORDER BY _order',
+      'SELECT a.name, a.icon FROM properties_rels r JOIN amenities a ON a.id = r.amenities_id WHERE r.parent_id = $1 AND r.amenities_id IS NOT NULL ORDER BY r."order"',
       [p.id]
     );
     const rulesRes = await db.query(
-      'SELECT text FROM properties_house_rules WHERE _parent_id = $1 ORDER BY _order',
+      'SELECT h.name FROM properties_rels r JOIN house_rules h ON h.id = r.house_rules_id WHERE r.parent_id = $1 AND r.house_rules_id IS NOT NULL ORDER BY r."order"',
       [p.id]
     );
 
@@ -169,7 +169,7 @@ router.get('/p/:slug', async (req, res, next) => {
     if (amenRes.rows.length) {
       amenitiesHtml = '<section class="mb-8"><h2 class="text-xl font-bold mb-3">Amenities</h2><div class="grid grid-cols-2 md:grid-cols-3 gap-2">';
       for (const a of amenRes.rows) {
-        amenitiesHtml += '<div class="flex items-center gap-2 text-slate-700"><span class="text-emerald-600">&#10003;</span> ' + esc(a.name) + '</div>';
+        amenitiesHtml += '<div class="flex items-center gap-2 text-slate-700"><span class="text-emerald-600">' + (a.icon ? esc(a.icon) : '&#10003;') + '</span> ' + esc(a.name) + '</div>';
       }
       amenitiesHtml += '</div></section>';
     }
@@ -178,7 +178,7 @@ router.get('/p/:slug', async (req, res, next) => {
     if (rulesRes.rows.length) {
       rulesHtml = '<section class="mb-8"><h2 class="text-xl font-bold mb-3">House rules</h2><ul class="space-y-1 text-slate-700">';
       for (const r of rulesRes.rows) {
-        rulesHtml += '<li>&middot; ' + esc(r.text) + '</li>';
+        rulesHtml += '<li>&middot; ' + esc(r.name) + '</li>';
       }
       rulesHtml += '</ul></section>';
     }
