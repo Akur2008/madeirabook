@@ -396,8 +396,8 @@ router.get('/owners', (req, res) => {
     </div>
 
     <div class="mb-4">
-      <label class="block text-sm font-bold mb-2">ID объекта (внешний) *</label>
-      <input type="text" name="smoobuId" required placeholder="37726"
+      <label class="block text-sm font-bold mb-2">ID объекта (внешний, необязательно)</label>
+      <input type="text" name="smoobuId" placeholder="37726 (необязательно)"
              class="w-full px-4 py-3 border border-slate-300 rounded-lg outline-none focus:border-emerald-500">
       <p class="text-xs text-slate-500 mt-1">ID property в PMS (Smoobu / Zeevou).</p>
     </div>
