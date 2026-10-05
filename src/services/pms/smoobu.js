@@ -202,12 +202,27 @@ async function getReservations(from, to, apartmentIds) {
  * @returns {Promise<{data:{[apartmentId]:{[date]:{price,min_length_of_stay,available}}}}>}
  */
 async function getRates(apartmentIds, startDate, endDate) {
-  const query = {
-    'apartments[]': apartmentIds.join('&apartments[]='),
-    'end_date': endDate,
-    'start_date': startDate
-  };
-  return smoobuRequest('GET', '/api/rates', null, query);
+  // API отдаёт только первый объект из массива — делаем N запросов и мержим
+  const merged = { data: {} };
+  for (const aptId of apartmentIds) {
+    try {
+      const query = {
+        'apartments[]': String(aptId),
+        'end_date': endDate,
+        'start_date': startDate
+      };
+      const r = await smoobuRequest('GET', '/api/rates', null, query);
+      if (r && r.data) {
+        Object.assign(merged.data, r.data);
+      }
+    } catch (e) {
+      // Логируем и продолжаем — остальные объекты важнее
+      console.warn('getRates failed for apt', aptId, e.message);
+    }
+    // Небольшая пауза между запросами — rate limit
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  return merged;
 }
 
 /**

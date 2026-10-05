@@ -1000,6 +1000,9 @@ function render() {
       html += '<td class="' + cls + '" onclick="dayClick(\\'' + dtStr + '\\', ' + prop.id + ')">';
       html += '<span class="cal-day-num">' + d + '</span>';
       if (rateForDay && rateForDay.price != null) {
+        if (rateForDay.min_length_of_stay) {
+          html += '<span style="position:absolute;bottom:14px;left:2px;font-size:9px;color:#94a3b8;">' + rateForDay.min_length_of_stay + '</span>';
+        }
         html += '<span style="position:absolute;bottom:1px;right:3px;font-size:10px;color:#0f172a;font-weight:600;">' + Math.round(rateForDay.price) + '</span>';
       }
       if (bk) {
