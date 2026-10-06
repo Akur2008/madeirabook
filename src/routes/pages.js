@@ -205,7 +205,7 @@ router.get('/p/:slug', async (req, res, next) => {
         const fmtD = d => d.toISOString().slice(0, 10);
         const today = new Date();
         const calFrom = new Date(today.getFullYear(), today.getMonth(), 1);
-        const calTo = new Date(today.getFullYear(), today.getMonth() + 5, 0);
+        const calTo = new Date(today.getFullYear(), today.getMonth() + 12, 0);
         const res = await pms.getReservations(fmtD(calFrom), fmtD(calTo), [Number(p.smoobu_id)]);
         const bookings = (res && res.bookings) || [];
         const busy = new Set();
@@ -222,8 +222,8 @@ router.get('/p/:slug', async (req, res, next) => {
         const todayStr = fmtD(today);
         let cal = '<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">';
         cal += '<h2 class="text-lg font-bold mb-4">Availability</h2>';
-        cal += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
-        for (let m = 0; m < 5; m++) {
+        cal += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">';
+        for (let m = 0; m < 12; m++) {
           const mDate = new Date(today.getFullYear(), today.getMonth() + m, 1);
           const monthName = mDate.toLocaleString('en', { month: 'long', year: 'numeric' });
           const daysInMonth = new Date(mDate.getFullYear(), mDate.getMonth() + 1, 0).getDate();
