@@ -1193,8 +1193,27 @@ function showBooking(id) {
     '<p><b>Departure:</b> ' + bk.departure + (bk.checkOut ? ' at ' + bk.checkOut : '') + '</p>' +
     '<p><b>Guests:</b> ' + bk.guests + '</p>' +
     '<p><b>Total:</b> €' + (bk.price || 0).toFixed(2) + '</p>' +
-    '<p><b>Smoobu ID:</b> ' + bk.id + '</p>';
+    '<p><b>Smoobu ID:</b> ' + bk.id + '</p>' +
+    '<div class="pt-3 flex gap-2">' +
+    '<button onclick="cancelBooking(' + bk.id + ')" class="flex-1 px-4 py-2 rounded-lg border border-red-300 text-red-600 font-bold hover:bg-red-50">Cancel booking</button>' +
+    '</div>' +
+    '<p id="bkCancelErr" class="hidden text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg mt-2"></p>';
   document.getElementById('bkPopup').classList.remove('hidden');
+}
+
+async function cancelBooking(id) {
+  if (!confirm('Cancel booking #' + id + '? Это действие отменит бронь в Smoobu.')) return;
+  const err = document.getElementById('bkCancelErr');
+  err.classList.add('hidden');
+  try {
+    const r = await fetch('/owner/bookings/' + id + '/cancel', { method: 'POST' });
+    const data = await r.json();
+    if (!r.ok || !data.ok) throw new Error(data.error || 'Failed');
+    location.reload();
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove('hidden');
+  }
 }
 
 function closePopup() {
@@ -1527,6 +1546,38 @@ router.post('/bookings/manual', requireOwner, async (req, res, next) => {
     res.json({ ok: true, smoobuId: bookingId });
   } catch (e) {
     logger.error({ err: e.message }, 'manual booking failed');
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/bookings/:id/cancel', requireOwner, async (req, res, next) => {
+  try {
+    const smoobuId = Number(req.params.id);
+    if (!smoobuId) return res.status(400).json({ error: 'Invalid booking id' });
+
+    // Проверим, что эта бронь принадлежит объекту владельца
+    const ownRes = await db.query(
+      'SELECT p.smoobu_id FROM properties p WHERE p.owner_id = $1 AND p.smoobu_id IS NOT NULL',
+      [req.owner.id]
+    );
+    const ids = ownRes.rows.map(r => Number(r.smoobu_id));
+    if (!ids.length) return res.status(400).json({ error: 'У вас нет объектов' });
+
+    // Запросим бронь из Smoobu, проверим принадлежность
+    const from = new Date(); from.setMonth(from.getMonth() - 6);
+    const to = new Date(); to.setMonth(to.getMonth() + 18);
+    const fmt = d => d.toISOString().slice(0, 10);
+    const all = await pms.getReservations(fmt(from), fmt(to));
+    const bk = (all.bookings || []).find(b => Number(b.id) === smoobuId);
+    if (!bk) return res.status(404).json({ error: 'Booking not found in Smoobu' });
+    const aptId = Number(bk.apartment && bk.apartment.id);
+    if (!ids.includes(aptId)) return res.status(403).json({ error: 'Not your booking' });
+
+    await pms.cancelReservation(smoobuId);
+    logger.info({ ownerId: req.owner.id, smoobuId }, 'booking cancelled');
+    res.json({ ok: true });
+  } catch (e) {
+    logger.error({ err: e.message }, 'cancel booking failed');
     res.status(500).json({ error: e.message });
   }
 });
