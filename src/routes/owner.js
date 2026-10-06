@@ -1201,7 +1201,7 @@ async function submitRates() {
     if (!r.ok || !data.ok) {
       throw new Error(data.error || 'Save failed');
     }
-    success.textContent = 'Обновлено объектов: ' + data.updated + ' / дат: ' + data.datesCount + '. Перезагрузка...';
+    success.textContent = 'Обновлено объектов: ' + data.updated + '. Перезагрузка...';
     success.classList.remove('hidden');
     setTimeout(() => location.reload(), 1200);
   } catch (e) {
@@ -1288,7 +1288,7 @@ render();
 
       <div class="flex gap-2 pt-2">
         <button onclick="closeRatesModal()" class="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>
-        <button disabled title="В разработке — ждём от Smoobu подтверждения формата POST /api/rates" class="flex-1 px-4 py-2 rounded-lg bg-slate-200 text-slate-500 font-bold cursor-not-allowed">Save (coming soon)</button>
+        <button onclick="saveRates()" class="flex-1 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold">Save</button>
       </div>
     </div>
   </div>
@@ -1367,7 +1367,7 @@ router.post('/rates/set', requireOwner, async (req, res, next) => {
 
     const okCount = results.filter(r => r.ok).length;
     logger.info(
-      { ownerId: req.owner.id, apartments: targetIds, dates: dates.length, ok: okCount },
+      { ownerId: req.owner.id, apartments: targetIds, ok: okCount },
       'rates updated'
     );
 
@@ -1375,7 +1375,6 @@ router.post('/rates/set', requireOwner, async (req, res, next) => {
       ok: okCount > 0,
       updated: okCount,
       total: targetIds.length,
-      datesCount: dates.length,
       apartments: results
     });
   } catch (e) {
