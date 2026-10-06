@@ -68,6 +68,7 @@ async function smoobuRequest(method, path, bodyObj, queryObj) {
       'X-Signature': signature,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'Content-Length': Buffer.byteLength(bodyStr || '', 'utf8'),
     },
   };
 
@@ -257,15 +258,19 @@ async function getRates(apartmentIds, startDate, endDate) {
  * @param {number} dailyPrice
  * @param {number} minLengthOfStay
  */
-async function setRates(apartmentIds, dates, dailyPrice, minLengthOfStay) {
-  const body = {
-    apartments: apartmentIds,
-    dates: dates,
-    daily_price: dailyPrice
+async function setRates(apartmentIds, arrivalDate, departureDate, price, minNights) {
+  const operation = {
+    dates: [arrivalDate + ':' + departureDate],
+    daily_price: price
   };
-  if (minLengthOfStay && minLengthOfStay > 0) {
-    body.min_length_of_stay = minLengthOfStay;
+  if (minNights && minNights > 0) {
+    operation.min_length_of_stay = minNights;
   }
+  const body = {
+    customerId: Number(config.SMOOBU_USER_ID),
+    apartments: apartmentIds,
+    operations: [operation]
+  };
   return smoobuRequest('POST', '/api/rates', body);
 }
 

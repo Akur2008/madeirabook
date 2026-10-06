@@ -1349,29 +1349,15 @@ router.post('/rates/set', requireOwner, async (req, res, next) => {
       return res.status(400).json({ error: 'Диапазон не может превышать 2 года' });
     }
 
-    const days = Array.isArray(daysOfWeek) && daysOfWeek.length
-      ? daysOfWeek.map(Number)
-      : [0,1,2,3,4,5,6];
-
-    const dates = [];
-    let cur = new Date(start);
-    while (cur <= end) {
-      if (days.includes(cur.getUTCDay())) {
-        dates.push(cur.toISOString().slice(0, 10));
-      }
-      cur.setUTCDate(cur.getUTCDate() + 1);
-    }
-
-    if (!dates.length) {
-      return res.status(400).json({ error: 'Не выбрано ни одной даты с такими днями недели' });
-    }
+    // Smoobu Post Rates Api принимает диапазон (arrivalDate/departureDate).
+    // daysOfWeek пока не поддерживается API — игнорируем, если пришёл.
 
     // Отправляем в Smoobu (по одному объекту — API не принимает массив)
     const results = [];
     for (const aptId of targetIds) {
       try {
-        await pms.setRates([aptId], dates, priceNum, minNightsNum);
-        results.push({ apartment: aptId, ok: true, dates: dates.length });
+        await pms.setRates([aptId], firstDay, lastDay, priceNum, minNightsNum);
+        results.push({ apartment: aptId, ok: true });
       } catch (e) {
         logger.error({ err: e.message, aptId }, 'setRates failed for apartment');
         results.push({ apartment: aptId, ok: false, error: e.message });
