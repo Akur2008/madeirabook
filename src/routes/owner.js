@@ -1212,8 +1212,8 @@ async function submitRates() {
   }
 }
 
-document.getElementById('ratesModal').addEventListener('click', e => {
-  if (e.target.id === 'ratesModal') closeRatesModal();
+document.addEventListener('click', e => {
+  if (e.target && e.target.id === 'ratesModal') closeRatesModal();
 });
 
 // Повесим openRatesModal на dayClick
