@@ -1005,6 +1005,72 @@ router.get('/calendar', requireOwner, async (req, res, next) => {
   <p class="text-xs text-slate-400 mt-2">Click any day to change prices.</p>
 </div>
 
+<button onclick="openBookingModal()" title="Add manual booking" style="position:fixed;bottom:32px;right:32px;width:64px;height:64px;border-radius:50%;background:#10b981;color:white;font-size:28px;font-weight:bold;border:none;cursor:pointer;box-shadow:0 8px 24px rgba(16,185,129,.4);z-index:40;">+</button>
+
+<div id="bookingModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+    <div class="flex justify-between items-start mb-4">
+      <h3 class="text-lg font-black">Add manual booking</h3>
+      <button onclick="closeBookingModal()" class="text-slate-400 hover:text-slate-800 text-xl leading-none">&times;</button>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Apartment</label>
+        <select id="bmProperty" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          ${apartmentsOptions.replace('<option value="all">All apartments</option>', '')}
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">Arrival</label>
+          <input type="date" id="bmArrival" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">Departure</label>
+          <input type="date" id="bmDeparture" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Guest name</label>
+        <input type="text" id="bmName" placeholder="First Last" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">Email</label>
+          <input type="email" id="bmEmail" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">Phone</label>
+          <input type="tel" id="bmPhone" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">Adults</label>
+          <input type="number" id="bmAdults" value="2" min="1" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">Children</label>
+          <input type="number" id="bmChildren" value="0" min="0" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs uppercase text-slate-500 mb-1">Price (€)</label>
+          <input type="number" id="bmPrice" min="0" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Notes (optional)</label>
+        <textarea id="bmNotes" rows="2" class="w-full rounded-lg border border-slate-300 px-3 py-2"></textarea>
+      </div>
+      <p id="bmErr" class="hidden text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg"></p>
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeBookingModal()" class="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>
+        <button id="bmSubmit" onclick="submitBooking()" class="flex-1 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold">Create booking</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="bkPopup" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
     <div class="flex justify-between items-start mb-4">
@@ -1215,6 +1281,51 @@ function dayClick(dateStr, propId) {
   openRatesModal(dateStr, propId);
 }
 
+function openBookingModal() {
+  document.getElementById('bookingModal').classList.remove('hidden');
+}
+function closeBookingModal() {
+  document.getElementById('bookingModal').classList.add('hidden');
+  document.getElementById('bmErr').classList.add('hidden');
+}
+async function submitBooking() {
+  const err = document.getElementById('bmErr');
+  const btn = document.getElementById('bmSubmit');
+  err.classList.add('hidden');
+
+  const body = {
+    propertyId: Number(document.getElementById('bmProperty').value),
+    arrivalDate: document.getElementById('bmArrival').value,
+    departureDate: document.getElementById('bmDeparture').value,
+    name: document.getElementById('bmName').value,
+    email: document.getElementById('bmEmail').value,
+    phone: document.getElementById('bmPhone').value,
+    adults: document.getElementById('bmAdults').value,
+    children: document.getElementById('bmChildren').value,
+    price: document.getElementById('bmPrice').value,
+    notes: document.getElementById('bmNotes').value
+  };
+  if (!body.propertyId || !body.arrivalDate || !body.departureDate || !body.name) {
+    err.textContent = 'Заполните Apartment, Arrival, Departure, Guest name';
+    err.classList.remove('hidden'); return;
+  }
+  btn.disabled = true; btn.textContent = 'Creating...';
+  try {
+    const r = await fetch('/owner/bookings/manual', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await r.json();
+    if (!r.ok || !data.ok) throw new Error(data.error || 'Failed');
+    location.reload();
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = 'Create booking';
+  }
+}
+
 initMonthSelect();
 render();
 </script>
@@ -1373,6 +1484,50 @@ router.post('/rates/set', requireOwner, async (req, res, next) => {
     });
   } catch (e) {
     next(e);
+  }
+});
+
+router.post('/bookings/manual', requireOwner, async (req, res, next) => {
+  try {
+    const { propertyId, arrivalDate, departureDate, name, email, phone, adults, children, price, notes } = req.body;
+
+    if (!propertyId || !arrivalDate || !departureDate || !name) {
+      return res.status(400).json({ error: 'propertyId, arrivalDate, departureDate, name обязательны' });
+    }
+
+    const propRes = await db.query(
+      'SELECT id, smoobu_id FROM properties WHERE id = $1 AND owner_id = $2',
+      [propertyId, req.owner.id]
+    );
+    if (!propRes.rows.length || !propRes.rows[0].smoobu_id) {
+      return res.status(404).json({ error: 'Объект не найден или не подключён к Smoobu' });
+    }
+    const smoobuId = Number(propRes.rows[0].smoobu_id);
+
+    const nameParts = String(name).trim().split(/\s+/);
+    const firstName = nameParts[0] || 'Guest';
+    const lastName = nameParts.slice(1).join(' ') || '-';
+
+    const bookingId = await pms.createReservation({
+      propertyId: smoobuId,
+      arrivalDate,
+      departureDate,
+      guestName: firstName,
+      lastName: lastName,
+      guestEmail: email || '',
+      phone: phone || '-',
+      country: 'PT',
+      arrivalTime: '15:00',
+      adults: Number(adults) || 2,
+      children: Number(children) || 0,
+      notes: notes || ''
+    });
+
+    logger.info({ ownerId: req.owner.id, propertyId, smoobuBookingId: bookingId }, 'manual booking created');
+    res.json({ ok: true, smoobuId: bookingId });
+  } catch (e) {
+    logger.error({ err: e.message }, 'manual booking failed');
+    res.status(500).json({ error: e.message });
   }
 });
 
