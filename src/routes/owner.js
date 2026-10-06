@@ -1002,7 +1002,7 @@ router.get('/calendar', requireOwner, async (req, res, next) => {
     <span><span style="display:inline-block;width:12px;height:12px;background:#f59e0b;border-radius:3px;vertical-align:middle;margin-right:4px;"></span>Expedia</span>
     <span><span style="display:inline-block;width:12px;height:12px;background:#8b5cf6;border-radius:3px;vertical-align:middle;margin-right:4px;"></span>Agoda</span>
   </div>
-  <p class="text-xs text-slate-400 mt-2">Read-only. Prices per day coming soon.</p>
+  <p class="text-xs text-slate-400 mt-2">Click any day to change prices.</p>
 </div>
 
 <div id="bkPopup" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
@@ -1229,7 +1229,7 @@ render();
 <div id="ratesModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
     <div class="flex justify-between items-start mb-4">
-      <div><h3 class="text-lg font-black">Change rates</h3><p class="text-xs text-amber-600 mt-1">Read-only пока не подтверждён формат записи от Smoobu</p></div>
+      <div><h3 class="text-lg font-black">Change rates</h3><p class="text-xs text-slate-500 mt-1">Set price and min nights for a date range</p></div>
       <button onclick="closeRatesModal()" class="text-slate-400 hover:text-slate-800 text-xl leading-none">&times;</button>
     </div>
 
@@ -1288,7 +1288,7 @@ render();
 
       <div class="flex gap-2 pt-2">
         <button onclick="closeRatesModal()" class="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>
-        <button onclick="saveRates()" class="flex-1 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold">Save</button>
+        <button onclick="submitRates()" class="flex-1 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold">Save</button>
       </div>
     </div>
   </div>
