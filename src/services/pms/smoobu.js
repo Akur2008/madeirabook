@@ -210,7 +210,7 @@ async function cancelReservation(smoobuBookingId) {
  * @returns {Promise<{total_items:number, bookings:Array}>}
  */
 async function getReservations(from, to, apartmentIds, pageSize) {
-  const query = { from, to, pageSize: pageSize || 200 };
+  const query = { from, to, pageSize: pageSize || 100 };
   if (apartmentIds && apartmentIds.length) {
     query.apartments = apartmentIds.join(',');
   }
