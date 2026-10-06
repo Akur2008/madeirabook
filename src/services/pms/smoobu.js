@@ -199,7 +199,7 @@ async function cancelReservation(smoobuBookingId) {
   if (process.env.SMOOBU_MOCK === 'true') {
     return { ok: true, mock: true };
   }
-  return smoobuRequest('PUT', `/api/reservations/${smoobuBookingId}`, { status: 'cancelled' });
+  return smoobuRequest('DELETE', `/api/reservations/${smoobuBookingId}`, null);
 }
 
 /**
