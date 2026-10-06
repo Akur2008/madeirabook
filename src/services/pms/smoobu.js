@@ -209,11 +209,8 @@ async function cancelReservation(smoobuBookingId) {
  * @param {number[]} apartmentIds — опционально, массив ID объектов
  * @returns {Promise<{total_items:number, bookings:Array}>}
  */
-async function getReservations(from, to, apartmentIds) {
-  const query = { from, to, pageSize: 50 };
-  // apartments передаём как повторяющийся параметр через URLSearchParams
-  // но наш smoobuRequest сортирует ключи — apartments должен быть с ключом apartments
-  // Поддержим массив: если apartmentIds передан, передадим как строку через запятую
+async function getReservations(from, to, apartmentIds, pageSize) {
+  const query = { from, to, pageSize: pageSize || 200 };
   if (apartmentIds && apartmentIds.length) {
     query.apartments = apartmentIds.join(',');
   }
