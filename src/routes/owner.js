@@ -771,6 +771,7 @@ router.get('/properties/new', requireOwner, (req, res) => {
 <div class="max-w-2xl mx-auto">
   <a href="/owner" class="text-sm text-slate-500 hover:text-slate-800">&larr; Owner cabinet</a>
   <h1 class="text-2xl font-black mt-4 mb-6">Add a property</h1>
+  <p class="text-sm text-slate-500 mb-6">After creating, add photos, amenities, and house rules. Object becomes visible only after admin verification.</p>
   <form method="POST" action="/owner/properties/new" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
     <div>
       <label class="block text-xs uppercase text-slate-500 mb-1">Title *</label>
@@ -780,20 +781,46 @@ router.get('/properties/new', requireOwner, (req, res) => {
       <label class="block text-xs uppercase text-slate-500 mb-1">Description</label>
       <textarea name="description" rows="5" maxlength="4000" class="w-full rounded-lg border border-slate-300 px-3 py-2"></textarea>
     </div>
-    <div class="grid grid-cols-2 gap-3">
+    <div>
+      <label class="block text-xs uppercase text-slate-500 mb-1">Short description (до 300 символов)</label>
+      <textarea name="shortDescription" rows="2" maxlength="300" class="w-full rounded-lg border border-slate-300 px-3 py-2"></textarea>
+    </div>
+    <div>
+      <label class="block text-xs uppercase text-slate-500 mb-1">Cleaning fee (EUR)</label>
+      <input type="number" name="cleaningFee" min="0" step="1" value="0" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+    </div>
+    <div class="grid grid-cols-4 gap-3">
       <div>
-        <label class="block text-xs uppercase text-slate-500 mb-1">Price per night (EUR) *</label>
-        <input type="number" name="pricePerNight" min="1" step="1" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        <label class="block text-xs uppercase text-slate-500 mb-1">m²</label>
+        <input type="number" name="sizeM2" min="1" step="1" class="w-full rounded-lg border border-slate-300 px-3 py-2">
       </div>
       <div>
-        <label class="block text-xs uppercase text-slate-500 mb-1">Cleaning fee (EUR)</label>
-        <input type="number" name="cleaningFee" min="0" step="1" value="0" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        <label class="block text-xs uppercase text-slate-500 mb-1">Bedrooms</label>
+        <input type="number" name="bedrooms" min="0" step="1" value="1" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Bathrooms</label>
+        <input type="number" name="bathrooms" min="0" step="1" value="1" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Max guests</label>
+        <input type="number" name="maxGuests" min="1" step="1" value="2" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Check-in time</label>
+        <input type="text" name="checkInTime" value="15:00" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+      </div>
+      <div>
+        <label class="block text-xs uppercase text-slate-500 mb-1">Check-out time</label>
+        <input type="text" name="checkOutTime" value="11:00" class="w-full rounded-lg border border-slate-300 px-3 py-2">
       </div>
     </div>
     <div>
       <label class="block text-xs uppercase text-slate-500 mb-1">PMS property ID (Smoobu ID, optional)</label>
-      <input type="text" name="smoobuId" maxlength="80" class="w-full rounded-lg border border-slate-300 px-3 py-2" placeholder="например, 12345 или test-smoobu-1">
-      <p class="text-xs text-slate-400 mt-1">Если не указать — объект появится, но бронирование будет недоступно до подключения PMS.</p>
+      <input type="text" name="smoobuId" maxlength="80" class="w-full rounded-lg border border-slate-300 px-3 py-2" placeholder="например, 12345">
+      <p class="text-xs text-slate-400 mt-1">Если не указать — бронирование недоступно до подключения PMS.</p>
     </div>
     <button type="submit" class="w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3">Create property</button>
   </form>
@@ -805,12 +832,18 @@ router.post('/properties/new', requireOwner, async (req, res, next) => {
   try {
     const title = ((req.body && req.body.title) || '').trim();
     const description = ((req.body && req.body.description) || '').trim() || null;
-    const price = parseFloat(req.body && req.body.pricePerNight);
+    const shortDescription = ((req.body && req.body.shortDescription) || '').trim().slice(0, 300) || null;
+    const sizeM2 = parseInt(req.body && req.body.sizeM2, 10) || null;
+    const bedrooms = parseInt(req.body && req.body.bedrooms, 10) || 1;
+    const bathrooms = parseInt(req.body && req.body.bathrooms, 10) || 1;
+    const maxGuests = parseInt(req.body && req.body.maxGuests, 10) || 2;
+    const checkInTime = ((req.body && req.body.checkInTime) || '15:00').trim().slice(0, 10);
+    const checkOutTime = ((req.body && req.body.checkOutTime) || '11:00').trim().slice(0, 10);
     const cleaning = parseFloat(req.body && req.body.cleaningFee) || 0;
     const smoobuId = ((req.body && req.body.smoobuId) || '').trim() || null;
 
-    if (!title || !isFinite(price) || price <= 0) {
-      return res.status(400).send('Title and price are required');
+    if (!title) {
+      return res.status(400).send('Title is required');
     }
 
     let slug = slugify(title);
@@ -825,9 +858,9 @@ router.post('/properties/new', requireOwner, async (req, res, next) => {
     }
 
     await db.query(
-      `INSERT INTO properties (title, slug, description, price_per_night, cleaning_fee, smoobu_id, owner_id, commission_percent, status, charges_enabled, brand)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 12, 'published', false, 'madeirabook')`,
-      [title, slug, description, price, cleaning, smoobuId, req.owner.id]
+      `INSERT INTO properties (title, slug, description, short_description, size_m2, bedrooms, bathrooms, max_guests, check_in_time, check_out_time, cleaning_fee, smoobu_id, owner_id, commission_percent, status, is_verified, charges_enabled, brand)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 12, 'draft', false, false, 'madeirabook')`,
+      [title, slug, description, shortDescription, sizeM2, bedrooms, bathrooms, maxGuests, checkInTime, checkOutTime, cleaning, smoobuId, req.owner.id]
     );
 
     const insRes = await db.query('SELECT id FROM properties WHERE slug = $1', [slug]);
