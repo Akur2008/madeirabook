@@ -222,13 +222,13 @@ router.get('/p/:slug', async (req, res, next) => {
         const todayStr = fmtD(today);
         let cal = '<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">';
         cal += '<h2 class="text-lg font-bold mb-4">Availability</h2>';
-        cal += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">';
+        cal += '<div class="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2" style="scroll-behavior:smooth;">';
         for (let m = 0; m < 12; m++) {
           const mDate = new Date(today.getFullYear(), today.getMonth() + m, 1);
           const monthName = mDate.toLocaleString('en', { month: 'long', year: 'numeric' });
           const daysInMonth = new Date(mDate.getFullYear(), mDate.getMonth() + 1, 0).getDate();
           const firstDay = (new Date(mDate.getFullYear(), mDate.getMonth(), 1).getDay() + 6) % 7;
-          cal += '<div><div class="text-xs font-bold text-slate-500 uppercase mb-2">' + monthName + '</div>';
+          cal += '<div class="snap-start flex-shrink-0 w-full md:w-[calc(33.333%-11px)]"><div class="text-xs font-bold text-slate-500 uppercase mb-2">' + monthName + '</div>';
           cal += '<div class="grid grid-cols-7 gap-1 text-center text-xs">';
           for (const wd of ['M','T','W','T','F','S','S']) cal += '<div class="text-slate-400 py-1 font-medium">' + wd + '</div>';
           for (let i = 0; i < firstDay; i++) cal += '<div></div>';
