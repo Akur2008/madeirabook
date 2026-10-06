@@ -1564,8 +1564,8 @@ router.post('/bookings/:id/cancel', requireOwner, async (req, res, next) => {
     if (!ids.length) return res.status(400).json({ error: 'У вас нет объектов' });
 
     // Запросим бронь из Smoobu, проверим принадлежность
-    const from = new Date(); from.setMonth(from.getMonth() - 12);
-    const to = new Date(); to.setMonth(to.getMonth() + 24);
+    const from = new Date(); from.setMonth(from.getMonth() - 6);
+    const to = new Date(); to.setMonth(to.getMonth() + 18);
     const fmt = d => d.toISOString().slice(0, 10);
     const all = await pms.getReservations(fmt(from), fmt(to), null, 100);
     const bk = (all.bookings || []).find(b => Number(b.id) === smoobuId);
