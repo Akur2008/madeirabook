@@ -19,7 +19,7 @@ router.get('/', async (req, res, next) => {
                JOIN media m ON m.id = pm.image_id
                WHERE pm._parent_id = p.id ORDER BY pm._order LIMIT 1) AS cover
        FROM properties p
-       WHERE p.status = 'published'
+       WHERE p.status = 'published' AND p.is_verified = true
        ORDER BY p.featured DESC NULLS LAST, p.id DESC
        LIMIT 60`
     );
@@ -179,7 +179,7 @@ router.get('/p/:slug', async (req, res, next) => {
       'SELECT id, slug, title, description, short_description, size_m2, bedrooms, bathrooms, ' +
       'max_guests, check_in_time, check_out_time, smoobu_id, price_per_night, cleaning_fee, ' +
       'location_id, status, charges_enabled ' +
-      'FROM properties WHERE slug = $1 LIMIT 1',
+      'FROM properties WHERE slug = $1 AND is_verified = true LIMIT 1',
       [slug]
     );
     if (!r.rows.length) {
@@ -574,7 +574,7 @@ router.get('/robots.txt', (req, res) => {
 router.get('/sitemap.xml', async (req, res, next) => {
   try {
     const base = (process.env.APP_URL || 'https://madeirabook-core.vercel.app').replace(/\/$/, '');
-    const r = await db.query("SELECT slug, updated_at FROM properties WHERE status = 'published' ORDER BY id DESC");
+    const r = await db.query("SELECT slug, updated_at FROM properties WHERE status = 'published' AND is_verified = true ORDER BY id DESC");
     const props = r.rows;
 
     let urls = '';

@@ -492,4 +492,55 @@ function copyLink() {
 </html>`);
 });
 
+router.get('/properties', async (req, res, next) => {
+  try {
+    const r = await db.query(
+      "SELECT p.id, p.title, p.slug, p.status, p.is_verified, p.smoobu_id, p.created_at, u.email AS owner_email " +
+      "FROM properties p LEFT JOIN users u ON u.id = p.owner_id ORDER BY p.created_at DESC"
+    );
+    let rows = '';
+    for (const x of r.rows) {
+      const verified = x.is_verified
+        ? '<span style="background:#28a745;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;">✓ Visible</span>'
+        : '<span style="background:#dc3545;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;">Hidden</span>';
+      const toggleText = x.is_verified ? 'Hide' : 'Verify';
+      const toggleColor = x.is_verified ? '#dc3545' : '#28a745';
+      rows += '<div style="background:#fff;padding:15px;margin-bottom:12px;border-radius:8px;border:1px solid #ddd;">'
+        + '<b>#' + x.id + '</b> — ' + escapeHtml(x.title || '(no title)') + '<br>'
+        + '<b>Slug:</b> <code>' + escapeHtml(x.slug || '—') + '</code><br>'
+        + '<b>Owner:</b> ' + escapeHtml(x.owner_email || '—') + '<br>'
+        + '<b>Smoobu ID:</b> ' + escapeHtml(x.smoobu_id || '—') + '<br>'
+        + '<b>Status:</b> ' + escapeHtml(x.status || '—') + ' &middot; <b>Visibility:</b> ' + verified + '<br>'
+        + '<form action="/admin/verify/' + x.id + '" method="POST" style="margin-top:12px;display:inline;">'
+        + '<button style="background:' + toggleColor + ';color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;">' + toggleText + '</button>'
+        + '</form> '
+        + '<a href="/admin/edit-property/' + x.id + '" style="margin-left:8px;color:#137333;">Edit</a>'
+        + '</div>';
+    }
+    res.send('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Admin — Properties</title></head>'
+      + '<body style="font-family:system-ui;max-width:800px;margin:40px auto;padding:20px;background:#f5f5f5;">'
+      + '<p><a href="/admin">← Back to admin</a></p>'
+      + '<h1>Properties</h1>'
+      + '<p style="color:#666;">Toggle visibility — verify (show) or hide from public site.</p>'
+      + rows
+      + '</body></html>');
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/verify/:id', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).send('Bad id');
+    const cur = await db.query('SELECT is_verified FROM properties WHERE id = $1', [id]);
+    if (!cur.rows.length) return res.status(404).send('Not found');
+    const newVal = !cur.rows[0].is_verified;
+    await db.query('UPDATE properties SET is_verified = $1, updated_at = NOW() WHERE id = $2', [newVal, id]);
+    res.redirect('/admin/properties');
+  } catch (e) {
+    next(e);
+  }
+});
+
 module.exports = router;
