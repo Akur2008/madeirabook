@@ -1244,17 +1244,12 @@ function closeRatesModal() {
   document.getElementById('ratesModal').classList.add('hidden');
 }
 
-function setAllDays(checked) {
-  document.querySelectorAll('.rm-day').forEach(cb => cb.checked = checked);
-}
-
 async function submitRates() {
   const firstDay = document.getElementById('rmFirstDay').value;
   const lastDay = document.getElementById('rmLastDay').value;
   const price = document.getElementById('rmPrice').value;
   const minNights = document.getElementById('rmMinNights').value;
   const apartments = document.getElementById('rmApartments').value;
-  const daysOfWeek = Array.from(document.querySelectorAll('.rm-day:checked')).map(cb => Number(cb.value));
   const err = document.getElementById('rmErr');
   const success = document.getElementById('rmSuccess');
   const btn = document.getElementById('rmSubmit');
@@ -1274,7 +1269,7 @@ async function submitRates() {
     const r = await fetch('/owner/rates/set', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ firstDay, lastDay, price, minNights, daysOfWeek, apartments })
+      body: JSON.stringify({ firstDay, lastDay, price, minNights, apartments })
     });
     const data = await r.json();
     if (!r.ok || !data.ok) {
@@ -1385,26 +1380,6 @@ render();
         <select id="rmApartments" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
           ${apartmentsOptions}
         </select>
-      </div>
-
-      <div>
-        <div class="flex justify-between items-center mb-1">
-          <label class="block text-xs font-medium text-slate-500">Days of week</label>
-          <div class="text-xs">
-            <button type="button" onclick="setAllDays(true)" class="text-emerald-700 hover:underline">All</button>
-            <span class="text-slate-300 mx-1">·</span>
-            <button type="button" onclick="setAllDays(false)" class="text-slate-500 hover:underline">None</button>
-          </div>
-        </div>
-        <div class="flex gap-2 flex-wrap">
-          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="1" checked>Mo</label>
-          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="2" checked>Tu</label>
-          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="3" checked>We</label>
-          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="4" checked>Th</label>
-          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="5" checked>Fr</label>
-          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="6" checked>Sa</label>
-          <label class="flex items-center gap-1 text-xs px-2 py-1 bg-slate-100 rounded cursor-pointer"><input type="checkbox" class="rm-day" value="0" checked>Su</label>
-        </div>
       </div>
 
       <p id="rmErr" class="hidden text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg"></p>
