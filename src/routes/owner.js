@@ -1017,7 +1017,7 @@ router.get('/calendar', requireOwner, async (req, res, next) => {
       <div>
         <label class="block text-xs uppercase text-slate-500 mb-1">Apartment</label>
         <select id="bmProperty" class="w-full rounded-lg border border-slate-300 px-3 py-2">
-          ${apartmentsOptions.replace('<option value="all">All apartments</option>', '')}
+          ${props.map(pr => '<option value="' + pr.id + '">' + ownerEscapeHtml(pr.title || pr.smoobu_id) + '</option>').join('')}
         </select>
       </div>
       <div class="grid grid-cols-2 gap-3">
