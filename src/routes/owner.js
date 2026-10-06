@@ -1182,12 +1182,6 @@ async function submitRates() {
     err.classList.remove('hidden');
     return;
   }
-  if (!daysOfWeek.length) {
-    err.textContent = 'Выберите хотя бы один день недели';
-    err.classList.remove('hidden');
-    return;
-  }
-
   btn.disabled = true;
   btn.textContent = 'Saving...';
 
@@ -1288,7 +1282,7 @@ render();
 
       <div class="flex gap-2 pt-2">
         <button onclick="closeRatesModal()" class="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>
-        <button onclick="submitRates()" class="flex-1 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold">Save</button>
+        <button id="rmSubmit" onclick="submitRates()" class="flex-1 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold">Save</button>
       </div>
     </div>
   </div>
