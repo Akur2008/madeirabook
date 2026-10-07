@@ -1005,6 +1005,18 @@ router.get('/calendar', requireOwner, async (req, res, next) => {
   .cal-cell.weekend { background: #f8fafc; }
   .cal-booking { position: absolute; left: 1px; right: 1px; top: 50%; transform: translateY(-50%); height: 12px; border-radius: 3px; cursor: pointer; }
   .cal-day-num { position: absolute; top: 1px; left: 3px; font-size: 10px; color: #94a3b8; font-weight: 500; }
+  .mob-prop { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+  .mob-prop-title { font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mob-track { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+  .mob-day { flex: 0 0 44px; height: 64px; border: 1px solid #e2e8f0; border-radius: 8px; position: relative; cursor: pointer; background: #fff; display: flex; flex-direction: column; align-items: center; padding-top: 4px; scroll-snap-align: start; }
+  .mob-day.today { background: #ecfdf5; border-color: #6ee7b7; }
+  .mob-day.weekend { background: #f8fafc; }
+  .mob-day.weekend.today { background: #ecfdf5; }
+  .mob-day-wd { font-size: 9px; color: #94a3b8; font-weight: 600; }
+  .mob-day-num { font-size: 11px; font-weight: 700; color: #334155; }
+  .mob-day-price { font-size: 10px; color: #0f172a; font-weight: 600; margin-top: 4px; }
+  .mob-day-min { font-size: 8px; color: #94a3b8; }
+  .mob-day-bk { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; border-radius: 0 0 8px 8px; }
 </style>
 </head>
 <body class="bg-slate-50 min-h-screen p-6">
@@ -1155,6 +1167,55 @@ function shiftMonth(delta) {
 }
 
 function render() {
+  if (window.innerWidth < 768) renderMobile();
+  else renderDesktop();
+}
+
+function renderMobile() {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const WD = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+  let html = '';
+  for (const prop of PROPS) {
+    html += '<div class="mob-prop">';
+    html += '<div class="mob-prop-title" title="' + prop.title + '">' + prop.title + '</div>';
+    html += '<div class="mob-track">';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dt = new Date(year, month, d);
+      const dtStr = fmtDate(dt);
+      const isToday = dt.getTime() === today.getTime();
+      const wd = dt.getDay();
+      const isWeekend = wd === 0 || wd === 6;
+      let cls = 'mob-day';
+      if (isToday) cls += ' today';
+      else if (isWeekend) cls += ' weekend';
+
+      const bk = BOOKINGS.find(function(b){ return b.propertyId === prop.id && dtStr >= b.arrival && dtStr < b.departure; });
+      const rateForDay = (RATES[String(prop.smoobuId)] || {})[dtStr];
+
+      html += '<div class="' + cls + '" onclick="dayClick(\'' + dtStr + '\', ' + prop.id + ')">';
+      html += '<div class="mob-day-wd">' + WD[wd] + '</div>';
+      html += '<div class="mob-day-num">' + d + '</div>';
+      if (rateForDay && rateForDay.price != null) {
+        html += '<div class="mob-day-price">' + Math.round(rateForDay.price) + '</div>';
+        if (rateForDay.min_length_of_stay) {
+          html += '<div class="mob-day-min">min ' + rateForDay.min_length_of_stay + '</div>';
+        }
+      }
+      if (bk) {
+        html += '<div class="mob-day-bk" style="background:' + bk.channelColor + '" onclick="event.stopPropagation();showBooking(' + bk.id + ')" title="' + bk.channel + ': ' + bk.guestName + '"></div>';
+      }
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+  document.getElementById('calWrap').innerHTML = html;
+}
+
+function renderDesktop() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1184,13 +1245,10 @@ function render() {
       if (isToday) cls += ' today';
       else if (isWeekend) cls += ' weekend';
 
-      const bk = BOOKINGS.find(b => {
-        if (b.propertyId !== prop.id) return false;
-        return dtStr >= b.arrival && dtStr < b.departure;
-      });
-
+      const bk = BOOKINGS.find(function(b){ return b.propertyId === prop.id && dtStr >= b.arrival && dtStr < b.departure; });
       const rateForDay = (RATES[String(prop.smoobuId)] || {})[dtStr];
-      html += '<td class="' + cls + '" onclick="dayClick(\\'' + dtStr + '\\', ' + prop.id + ')">';
+
+      html += '<td class="' + cls + '" onclick="dayClick(\'' + dtStr + '\', ' + prop.id + ')">';
       html += '<span class="cal-day-num">' + d + '</span>';
       if (rateForDay && rateForDay.price != null) {
         if (rateForDay.min_length_of_stay) {
@@ -1208,6 +1266,12 @@ function render() {
   html += '</tbody></table>';
   document.getElementById('calWrap').innerHTML = html;
 }
+
+let _rzT = null;
+window.addEventListener('resize', function() {
+  if (_rzT) clearTimeout(_rzT);
+  _rzT = setTimeout(render, 150);
+});
 
 function dayClick(dateStr, propId) {
   // Заглушка — потом тут будет редактирование цены
