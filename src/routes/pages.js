@@ -485,7 +485,7 @@ var PROP_ID = ${p.id};
   function deb() { if (_t) clearTimeout(_t); _t = setTimeout(check, 400); }
   arr.addEventListener('change', deb);
   dep.addEventListener('change', deb);
-  if (arr.value && dep.value) check();
+  // При загрузке серверная плашка уже показана — JS запустится только при изменении дат.
 })();
 
 document.getElementById('bookForm').addEventListener('submit', async function (e) {
