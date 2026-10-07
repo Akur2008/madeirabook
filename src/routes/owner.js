@@ -1196,7 +1196,7 @@ function renderMobile() {
       const bk = BOOKINGS.find(function(b){ return b.propertyId === prop.id && dtStr >= b.arrival && dtStr < b.departure; });
       const rateForDay = (RATES[String(prop.smoobuId)] || {})[dtStr];
 
-      html += '<div class="' + cls + '" onclick="dayClick(\'' + dtStr + '\', ' + prop.id + ')">';
+      html += '<div class="' + cls + '" onclick="dayClick(\\'' + dtStr + '\\', ' + prop.id + ')">';
       html += '<div class="mob-day-wd">' + WD[wd] + '</div>';
       html += '<div class="mob-day-num">' + d + '</div>';
       if (rateForDay && rateForDay.price != null) {
@@ -1248,7 +1248,7 @@ function renderDesktop() {
       const bk = BOOKINGS.find(function(b){ return b.propertyId === prop.id && dtStr >= b.arrival && dtStr < b.departure; });
       const rateForDay = (RATES[String(prop.smoobuId)] || {})[dtStr];
 
-      html += '<td class="' + cls + '" onclick="dayClick(\'' + dtStr + '\', ' + prop.id + ')">';
+      html += '<td class="' + cls + '" onclick="dayClick(\\'' + dtStr + '\\', ' + prop.id + ')">';
       html += '<span class="cal-day-num">' + d + '</span>';
       if (rateForDay && rateForDay.price != null) {
         if (rateForDay.min_length_of_stay) {
