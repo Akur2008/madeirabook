@@ -19,10 +19,21 @@ router.post('/', async (req, res) => {
     }
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    await db.query(
-      'INSERT INTO subscribers (email, source) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING',
+    const ins = await db.query(
+      'INSERT INTO subscribers (email, source) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING RETURNING id',
       [email, source]
     );
+    // Если подписчик новый — кладём 3 письма в очередь (welcome уже отправляется ниже)
+    if (ins.rows.length) {
+      const subId = ins.rows[0].id;
+      await db.query(
+        `INSERT INTO email_queue (subscriber_id, template, send_at) VALUES
+          ($1, 'restaurants_funchal', NOW() + INTERVAL '7 days'),
+          ($1, 'madeira_winter',     NOW() + INTERVAL '21 days'),
+          ($1, 'return_offer',       NOW() + INTERVAL '45 days')`,
+        [subId]
+      );
+    }
 
     const pdfResponse = await fetch('https://www.madeirabook.com/madeira-guide.pdf');
     if (!pdfResponse.ok) throw new Error('Could not fetch PDF');
@@ -31,6 +42,7 @@ router.post('/', async (req, res) => {
     await resend.emails.send({
       from: 'Madeirabook <hello@madeirabook.com>',
       to: email,
+      replyTo: 'akur2013@gmail.com',
       subject: 'Your Madeira Travel Guide 🌴',
       text: 'Thanks for subscribing! Your Madeira travel guide is attached.\n\nGet restaurant discounts and insider tips in Telegram: https://t.me/Madeirabookbot?start=pdf_guide',
       html: `
