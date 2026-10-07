@@ -365,13 +365,15 @@ router.get('/p/:slug', async (req, res, next) => {
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-xs uppercase text-slate-500 mb-1">Arrival</label>
-          <input type="date" name="arrivalDate" required value="${esc(qArrival)}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <input type="date" name="arrivalDate" id="pArrival" required value="${esc(qArrival)}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
         </div>
         <div>
           <label class="block text-xs uppercase text-slate-500 mb-1">Departure</label>
-          <input type="date" name="departureDate" required value="${esc(qDeparture)}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <input type="date" name="departureDate" id="pDeparture" required value="${esc(qDeparture)}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
         </div>
       </div>
+      <p id="availHint" class="text-xs text-slate-400">Enter both dates to see availability and total price</p>
+      <div id="availBox" class="hidden rounded-lg text-sm px-4 py-3"></div>
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-xs uppercase text-slate-500 mb-1">First name</label>
@@ -428,6 +430,55 @@ router.get('/p/:slug', async (req, res, next) => {
 </div>
 
 <script>
+var PROP_ID = ${p.id};
+(function() {
+  const arr = document.getElementById('pArrival');
+  const dep = document.getElementById('pDeparture');
+  const box = document.getElementById('availBox');
+  const hint = document.getElementById('availHint');
+  if (!arr || !dep || !box) return;
+  let _t = null;
+  async function check() {
+    const a = arr.value, d = dep.value;
+    if (!a || !d || a >= d) {
+      box.classList.add('hidden');
+      if (hint) hint.style.display = '';
+      return;
+    }
+    if (hint) hint.style.display = 'none';
+    box.className = 'rounded-lg text-sm px-4 py-3 bg-slate-50 text-slate-500';
+    box.textContent = 'Checking availability...';
+    box.classList.remove('hidden');
+    try {
+      const r = await fetch('/api/check-availability?propertyId=' + PROP_ID + '&arrival=' + a + '&departure=' + d);
+      const j = await r.json();
+      if (j.available) {
+        box.className = 'rounded-lg text-sm px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800';
+        const nightsLabel = j.nights + (j.nights === 1 ? ' night' : ' nights');
+        let html = '&#10003; <strong>Available</strong>';
+        html += '<div style="margin-top:8px;font-size:13px;color:#065f46;">';
+        html += '<div style="display:flex;justify-content:space-between;gap:16px;"><span>' + j.rate + ' ' + j.currency + ' × ' + nightsLabel + '</span><span>' + (j.rate * j.nights) + ' ' + j.currency + '</span></div>';
+        if (j.cleaning_fee > 0) {
+          html += '<div style="display:flex;justify-content:space-between;gap:16px;"><span>Cleaning fee</span><span>' + j.cleaning_fee + ' ' + j.currency + '</span></div>';
+        }
+        html += '<div style="display:flex;justify-content:space-between;gap:16px;border-top:1px solid #6ee7b7;margin-top:6px;padding-top:6px;font-weight:800;font-size:14px;"><span>Total</span><span>' + j.total + ' ' + j.currency + '</span></div>';
+        html += '</div>';
+        box.innerHTML = html;
+      } else {
+        box.className = 'rounded-lg text-sm px-4 py-3 bg-red-50 border border-red-200 text-red-800';
+        box.textContent = 'Not available for these dates';
+      }
+    } catch (e) {
+      box.className = 'rounded-lg text-sm px-4 py-3 bg-amber-50 text-amber-700';
+      box.textContent = 'Could not check availability';
+    }
+  }
+  function deb() { if (_t) clearTimeout(_t); _t = setTimeout(check, 400); }
+  arr.addEventListener('change', deb);
+  dep.addEventListener('change', deb);
+  if (arr.value && dep.value) check();
+})();
+
 document.getElementById('bookForm').addEventListener('submit', async function (e) {
   e.preventDefault();
   const btn = document.getElementById('submitBtn');
