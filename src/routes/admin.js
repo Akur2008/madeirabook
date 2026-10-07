@@ -533,10 +533,15 @@ router.post('/verify/:id', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!id) return res.status(400).send('Bad id');
-    const cur = await db.query('SELECT is_verified FROM properties WHERE id = $1', [id]);
+    const cur = await db.query('SELECT is_verified, status FROM properties WHERE id = $1', [id]);
     if (!cur.rows.length) return res.status(404).send('Not found');
     const newVal = !cur.rows[0].is_verified;
-    await db.query('UPDATE properties SET is_verified = $1, updated_at = NOW() WHERE id = $2', [newVal, id]);
+    // При Verify также публикуем (status='published'). При Hide — не трогаем status.
+    if (newVal) {
+      await db.query("UPDATE properties SET is_verified = true, status = 'published', updated_at = NOW() WHERE id = $1", [id]);
+    } else {
+      await db.query('UPDATE properties SET is_verified = false, updated_at = NOW() WHERE id = $1', [id]);
+    }
     res.redirect('/admin/properties');
   } catch (e) {
     next(e);
