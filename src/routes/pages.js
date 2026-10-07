@@ -257,9 +257,18 @@ router.get('/p/:slug', async (req, res, next) => {
         const av = await pms.checkAvailability([Number(p.smoobu_id)], qArrival, qDeparture);
         const entry = av[Number(p.smoobu_id)];
         if (entry && entry.available) {
+          const nights = Math.round((new Date(qDeparture) - new Date(qArrival)) / 86400000);
+          const total = Number(entry.price);
+          const cleanFee = Number(p.cleaning_fee) || 0;
+          const rate = nights > 0 ? Math.round((total - cleanFee) / nights) : 0;
+          const nightsLabel = nights + (nights === 1 ? ' night' : ' nights');
           availabilityHtml = '<div class="rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm px-4 py-3 mb-4">'
-            + '&#10003; Available ' + esc(qArrival) + ' → ' + esc(qDeparture)
-            + ' &middot; <strong>' + Number(entry.price).toFixed(0) + ' EUR total</strong></div>';
+            + '&#10003; <strong>Available</strong>'
+            + '<div style="margin-top:8px;font-size:13px;color:#065f46;">'
+            + '<div style="display:flex;justify-content:space-between;gap:16px;"><span>' + rate + ' EUR &times; ' + nightsLabel + '</span><span>' + (rate * nights) + ' EUR</span></div>'
+            + (cleanFee > 0 ? '<div style="display:flex;justify-content:space-between;gap:16px;"><span>Cleaning fee</span><span>' + cleanFee + ' EUR</span></div>' : '')
+            + '<div style="display:flex;justify-content:space-between;gap:16px;border-top:1px solid #6ee7b7;margin-top:6px;padding-top:6px;font-weight:800;font-size:14px;"><span>Total</span><span>' + total + ' EUR</span></div>'
+            + '</div></div>';
         } else {
           availabilityHtml = '<div class="rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3 mb-4">'
             + 'Not available for ' + esc(qArrival) + ' → ' + esc(qDeparture) + '</div>';
