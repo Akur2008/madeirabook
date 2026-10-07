@@ -536,9 +536,89 @@ document.getElementById('bookForm').addEventListener('submit', async function (e
 
 
 // === LEGAL PAGES ===
+// Минимальный markdown-рендер для legal-текстов.
+// Безопасность: esc() применяется к исходному тексту ДО вставки тегов,
+// ссылки — только http(s)://, javascript: и прочие схемы не пройдут.
+function mdInline(s) {
+  let t = esc(s);
+  const stash = [];
+  const anchor = (href, text) => {
+    stash.push('<a href="' + href + '" class="text-cyan-700 underline" target="_blank" rel="noopener noreferrer">' + text + '</a>');
+    return '\u0001' + (stash.length - 1) + '\u0002';
+  };
+  // [text](url)
+  t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, txt, url) => anchor(url, txt));
+  // голые URL https://... (не внутри уже вставленных <a>)
+  t = t.replace(/(^|[^\w"'])(https?:\/\/[^\s<]+)/g, (m, pre, url) => {
+    let trail = '';
+    while (/[.,;:!?)]$/.test(url)) { trail = url.slice(-1) + trail; url = url.slice(0, -1); }
+    return pre + anchor(url, url) + trail;
+  });
+  // **bold**
+  t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return t.replace(/\u0001(\d+)\u0002/g, (m, i) => stash[+i]);
+}
+
+function mdLegal(src) {
+  const lines = String(src).replace(/\r\n?/g, '\n').split('\n');
+  const isSepRow = (row) => row.every((c) => /^:?-{2,}:?$/.test(c));
+  let html = '';
+  let inList = false;
+  let tableRows = [];
+
+  const closeBlocks = () => {
+    if (inList) { html += '</ul>'; inList = false; }
+    if (!tableRows.length) return;
+    const hasHeader = tableRows.length > 1 && isSepRow(tableRows[1]);
+    html += '<table class="w-full text-sm my-4 border-collapse"><tbody>';
+    tableRows.forEach((row, i) => {
+      if (isSepRow(row)) return;
+      const isHead = hasHeader && i === 0;
+      const tag = isHead ? 'th' : 'td';
+      const cls = isHead
+        ? 'border border-slate-300 bg-slate-100 px-3 py-1 text-left font-semibold'
+        : 'border border-slate-300 px-3 py-1 align-top';
+      html += '<tr>' + row.map((c) => '<' + tag + ' class="' + cls + '">' + mdInline(c) + '</' + tag + '>').join('') + '</tr>';
+    });
+    html += '</tbody></table>';
+    tableRows = [];
+  };
+
+  for (const line of lines) {
+    const t = line.trim();
+    if (/^\|/.test(t)) {
+      if (inList) { html += '</ul>'; inList = false; }
+      tableRows.push(t.replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim()));
+      continue;
+    }
+    const h = /^(#{1,3})\s+(.*)$/.exec(t);
+    if (h) {
+      closeBlocks();
+      const lvl = h[1].length;
+      const cls = lvl === 1 ? 'text-2xl font-bold mt-8 mb-3'
+        : lvl === 2 ? 'text-xl font-bold mt-6 mb-2'
+        : 'text-lg font-semibold mt-5 mb-2';
+      html += '<h' + lvl + ' class="' + cls + '">' + mdInline(h[2]) + '</h' + lvl + '>';
+      continue;
+    }
+    const li = /^[-*]\s+(.*)$/.exec(t);
+    if (li) {
+      if (tableRows.length) closeBlocks();
+      if (!inList) { html += '<ul class="list-disc pl-6 my-3 space-y-1">'; inList = true; }
+      html += '<li>' + mdInline(li[1]) + '</li>';
+      continue;
+    }
+    closeBlocks();
+    if (!t) { html += '<br>'; continue; }
+    html += mdInline(t) + '<br>';
+  }
+  closeBlocks();
+  return html;
+}
+
 function renderLegal(title, content, lastUpdated) {
   const body = content
-    ? esc(content).replace(/\n/g, '<br>')
+    ? mdLegal(content)
     : '<p class="text-slate-400 italic">This document is being prepared. Check back soon.</p>';
   const updated = lastUpdated
     ? '<p class="text-xs text-slate-400 mt-8">Last updated: ' + new Date(lastUpdated).toISOString().slice(0, 10) + '</p>'
