@@ -22,12 +22,18 @@ router.get('/:slug', async (req, res, next) => {
     }
     const g = r.rows[0];
     const questions = Array.isArray(g.questions) ? g.questions : [];
+    const accentHex = String(g.accent_color || '#D4AF37').replace('#', '');
+    const accentR = parseInt(accentHex.slice(0,2), 16) || 212;
+    const accentG = parseInt(accentHex.slice(2,4), 16) || 175;
+    const accentB = parseInt(accentHex.slice(4,6), 16) || 55;
+    const accentRgb = accentR + ',' + accentG + ',' + accentB;
 
     res.send(`<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>${esc(g.title)} — Madeirabook</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
+  :root { --accent-rgb: ${accentRgb}; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; overflow: hidden; }
   body { background: #0a0a0a; color: #f5f5f7; font-family: Georgia, serif; }
@@ -38,17 +44,17 @@ router.get('/:slug', async (req, res, next) => {
 
   .overlay { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 16px; }
 
-  .glass { background: rgba(10,10,10,0.20); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); border: 1px solid rgba(212,175,55,0.3); border-radius: 20px; padding: 28px 24px; max-width: 480px; width: 100%; }
+  .glass { background: rgba(10,10,10,0.08); backdrop-filter: blur(24px) saturate(120%); -webkit-backdrop-filter: blur(24px) saturate(120%); border: 1px solid rgba(var(--accent-rgb), 0.25); border-radius: 20px; padding: 28px 24px; max-width: 480px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
 
-  .title { font-size: 34px; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.5px; line-height: 1.1; }
-  .subtitle { color: #c9c9d0; font-size: 15px; margin: 0 0 28px 0; line-height: 1.4; }
-  .q-title { font-size: 20px; margin-bottom: 16px; font-weight: 600; }
-  .btn-answer { display: block; width: 100%; text-align: left; padding: 16px 18px; border-radius: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f5f7; font-size: 15px; margin-bottom: 10px; cursor: pointer; transition: all .2s; font-family: Georgia, serif; -webkit-tap-highlight-color: transparent; }
-  .btn-answer:hover, .btn-answer:active { background: rgba(212,175,55,0.2); border-color: rgba(212,175,55,0.5); }
+  .title { font-size: 34px; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.5px; line-height: 1.1; text-shadow: 0 2px 12px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.9); }
+  .subtitle { color: #e0e0e5; font-size: 15px; margin: 0 0 28px 0; line-height: 1.4; text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
+  .q-title { font-size: 20px; margin-bottom: 16px; font-weight: 600; text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
+  .btn-answer { display: block; width: 100%; text-align: left; padding: 16px 18px; border-radius: 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #f5f5f7; font-size: 15px; margin-bottom: 10px; cursor: pointer; transition: all .2s; font-family: Georgia, serif; -webkit-tap-highlight-color: transparent; text-shadow: 0 1px 4px rgba(0,0,0,0.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  .btn-answer:hover, .btn-answer:active { background: rgba(var(--accent-rgb), 0.2); border-color: rgba(var(--accent-rgb), 0.5); }
 
   .sound-btn { position: fixed; top: 16px; right: 16px; z-index: 3; width: 44px; height: 44px; border-radius: 50%; background: rgba(10,10,10,0.5); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.2); color: #f5f5f7; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: all .2s; -webkit-tap-highlight-color: transparent; }
-  .sound-btn:hover, .sound-btn:active { background: rgba(212,175,55,0.3); border-color: rgba(212,175,55,0.5); }
-  .sound-btn.on { background: rgba(212,175,55,0.4); border-color: #D4AF37; }
+  .sound-btn:hover, .sound-btn:active { background: rgba(var(--accent-rgb), 0.3); border-color: rgba(var(--accent-rgb), 0.5); }
+  .sound-btn.on { background: rgba(var(--accent-rgb), 0.4); border-color: #D4AF37; }
 
   .back-link { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.5); text-decoration: none; font-size: 13px; z-index: 3; }
 
@@ -84,7 +90,7 @@ ${g.audio_url ? `<button id="soundBtn" class="sound-btn" title="Sound on/off" ar
         <div class="q-title" id="qText"></div>
         <div id="answers"></div>
       </div>
-      <button id="openBtn" style="display:none;width:100%;padding:18px;border-radius:12px;background:#D4AF37;color:#0a0a0a;font-weight:800;font-size:16px;border:none;cursor:pointer;font-family:Georgia,serif;-webkit-tap-highlight-color: transparent;">Open sanctuary →</button>
+      <button id="openBtn" style="display:none;width:100%;padding:18px;border-radius:12px;background:rgba(255,255,255,0.04);backdrop-filter:blur(20px) saturate(120%);-webkit-backdrop-filter:blur(20px) saturate(120%);color:#f5f5f7;font-weight:800;font-size:16px;border:1px solid rgba(255,255,255,0.6);cursor:pointer;font-family:Georgia,serif;-webkit-tap-highlight-color: transparent;text-shadow:0 1px 4px rgba(0,0,0,0.5);">Open sanctuary →</button>
     </div>
   </div>
   <a href="/" class="back-link">← Madeirabook</a>
