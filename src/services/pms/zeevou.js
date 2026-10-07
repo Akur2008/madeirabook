@@ -1,3 +1,4 @@
+const https = require('https');
 const config = require('../../config');
 const logger = require('../../logger');
 
@@ -189,8 +190,85 @@ async function cancelReservation(zeevouBookingId) {
   return res.json();
 }
 
+/**
+ * Создать объект (property) в Zeevou.
+ * Авторизация — заглушка через статический ZEEVOU_API_TOKEN (OAuth подключим позже).
+ * @param {object} data
+ * @param {string} data.name
+ * @param {string} data.description
+ * @param {object} data.address - {street, postalCode, city, country}
+ * @param {string} data.unitTypeName
+ * @param {number} data.maxCapacity
+ * @returns {Promise<object>} созданный property ({ id, ... })
+ */
+async function createZeevouProperty(data) {
+  const token = process.env.ZEEVOU_API_TOKEN;
+  if (!token) throw new Error('ZEEVOU_API_TOKEN missing in env');
+
+  const bodyObj = {
+    name: data.name,
+    short_name: data.name,
+    description: data.description,
+    default_currency: 'EUR',
+    is_active: true,
+    google_enabled: true,
+    allow_direct_booking: true,
+    publish_on_zeevou_direct: true,
+    address: {
+      first_line: data.address && data.address.street,
+      postal_code: data.address && data.address.postalCode,
+      city: data.address && data.address.city,
+      country: data.address && data.address.country,
+    },
+    unit_types: [{
+      name: data.unitTypeName || 'Studio',
+      maximum_capacity: data.maxCapacity || 4,
+    }],
+  };
+  const bodyStr = JSON.stringify(bodyObj);
+  const url = new URL(BASE + '/apis/properties');
+
+  const options = {
+    hostname: url.hostname,
+    port: 443,
+    path: url.pathname,
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + token,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Content-Length': Buffer.byteLength(bodyStr, 'utf8'),
+    },
+  };
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => {
+      let raw = '';
+      res.on('data', (chunk) => (raw += chunk));
+      res.on('end', () => {
+        let parsed;
+        try { parsed = raw ? JSON.parse(raw) : {}; } catch { parsed = { raw }; }
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          logger.info({ id: parsed.id }, 'zeevou property created');
+          resolve(parsed);
+        } else {
+          logger.error({ status: res.statusCode, body: parsed }, 'zeevou POST /apis/properties error');
+          const err = new Error('Zeevou POST /apis/properties failed: ' + res.statusCode);
+          err.status = res.statusCode;
+          err.body = parsed;
+          reject(err);
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(bodyStr);
+    req.end();
+  });
+}
+
 module.exports = {
   getToken,
+  createZeevouProperty,
   getProperties,
   getAvailability,
   getPrice,

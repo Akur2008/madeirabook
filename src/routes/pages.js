@@ -207,7 +207,9 @@ router.get('/p/:slug', async (req, res, next) => {
         const calFrom = new Date(today.getFullYear(), today.getMonth(), 1);
         const calTo = new Date(today.getFullYear(), today.getMonth() + 12, 0);
         const res = await pms.getReservations(fmtD(calFrom), fmtD(calTo), [Number(p.smoobu_id)]);
-        const bookings = (res && res.bookings) || [];
+        const allBookings = (res && res.bookings) || [];
+        const myAptId = Number(p.smoobu_id);
+        const bookings = allBookings.filter(b => b.apartment && Number(b.apartment.id) === myAptId);
         const busy = new Set();
         for (const b of bookings) {
           if (b.is_blocked_booking && b.is_blocked_booking !== '0') continue;
