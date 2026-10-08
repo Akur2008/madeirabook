@@ -86,8 +86,7 @@ ${g.poster_url ? '<meta property="og:image" content="' + esc(g.poster_url) + '">
     : (g.poster_url ? `<img src="${esc(g.poster_url)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.75);">` : '')}
 </div>
 
-${g.audio_url ? `<button id="soundBtn" class="sound-btn" title="Sound on/off" aria-label="Sound">🔇</button>
-<audio id="ambient" src="${esc(g.audio_url)}" loop preload="auto"></audio>` : ''}
+
 
 <div class="overlay">
   <div class="glass">
@@ -138,50 +137,7 @@ document.getElementById('openBtn').onclick = () => {
 };
 render();
 
-// === SOUND ===
-(function() {
-  const btn = document.getElementById('soundBtn');
-  const audio = document.getElementById('ambient');
-  if (!btn || !audio) return;
-  let targetVol = 0;
-  let currentVol = 0;
-  let fadeTimer = null;
 
-  function fadeTo(target) {
-    targetVol = target;
-    if (fadeTimer) clearInterval(fadeTimer);
-    fadeTimer = setInterval(() => {
-      const step = 0.05;
-      if (Math.abs(currentVol - targetVol) < step) {
-        currentVol = targetVol;
-        audio.volume = currentVol;
-        clearInterval(fadeTimer);
-        fadeTimer = null;
-        return;
-      }
-      currentVol += (targetVol > currentVol ? step : -step);
-      audio.volume = Math.max(0, Math.min(1, currentVol));
-    }, 40);
-  }
-
-  btn.addEventListener('click', () => {
-    if (audio.paused) {
-      audio.volume = 0;
-      audio.play().then(() => {
-        btn.textContent = '🔊';
-        btn.classList.add('on');
-        fadeTo(0.6);
-      }).catch((e) => { console.warn('audio play failed', e); });
-    } else {
-      fadeTo(0);
-      setTimeout(() => {
-        audio.pause();
-        btn.textContent = '🔇';
-        btn.classList.remove('on');
-      }, 400);
-    }
-  });
-})();
 </script>
 <script src="/sounds.js" defer></script></body></html>`);
   } catch (e) {
