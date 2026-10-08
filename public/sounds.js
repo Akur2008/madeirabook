@@ -21,8 +21,8 @@
   style.textContent = `
     .mb-sound-btn {
       position: fixed;
-      bottom: 20px;
-      right: 20px;
+      bottom: 90px;
+      right: 16px;
       z-index: 9998;
       width: 56px;
       height: 56px;
@@ -59,7 +59,7 @@
       50% { box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 0 0 14px rgba(212,175,55,0); }
     }
     @media (max-width: 480px) {
-      .mb-sound-btn { width: 48px; height: 48px; font-size: 20px; bottom: 16px; right: 16px; }
+      .mb-sound-btn { width: 48px; height: 48px; font-size: 20px; bottom: 84px; right: 12px; }
     }
   `;
   document.head.appendChild(style);
