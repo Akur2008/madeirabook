@@ -31,6 +31,14 @@ router.get('/:slug', async (req, res, next) => {
     res.send(`<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>${esc(g.title)} — Madeirabook</title>
+<meta name="description" content="${esc(g.subtitle || g.title)}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="${esc(g.title)} — Madeirabook">
+<meta property="og:description" content="${esc(g.subtitle || '')}">
+${g.poster_url ? '<meta property="og:image" content="' + esc(g.poster_url) + '">' : ''}
+<meta property="og:url" content="https://app.madeirabook.com/gateway/${esc(g.slug)}">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://app.madeirabook.com/gateway/${esc(g.slug)}">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root { --accent-rgb: ${accentRgb}; }
