@@ -18,7 +18,7 @@ router.get('/:slug', async (req, res, next) => {
       [slug]
     );
     if (!r.rows.length) {
-      return res.status(404).send('<!DOCTYPE html><html><head><title>404</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-black min-h-screen flex items-center justify-center text-slate-200"><div class="text-center"><h1 class="text-6xl font-black mb-4">404</h1><p class="mb-6">Gateway not found</p><a href="/" class="text-cyan-400 hover:underline">Go home</a></div></body></html>');
+      return res.status(404).send('<!DOCTYPE html><html><head><title>404</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-black min-h-screen flex items-center justify-center text-slate-200"><div class="text-center"><h1 class="text-6xl font-black mb-4">404</h1><p class="mb-6">Gateway not found</p><a href="/" class="text-cyan-400 hover:underline">Go home</a></div><script src="/sounds.js" defer></script></body></html>');
     }
     const g = r.rows[0];
     const questions = Array.isArray(g.questions) ? g.questions : [];
@@ -175,7 +175,7 @@ render();
   });
 })();
 </script>
-</body></html>`);
+<script src="/sounds.js" defer></script></body></html>`);
   } catch (e) {
     next(e);
   }

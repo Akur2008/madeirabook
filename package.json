@@ -9,6 +9,7 @@
     "migrate": "node db/migrate.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1147.0",
     "@next/env": "^14.2.35",
     "@payloadcms/db-postgres": "3.90.2",
     "@vercel/blob": "^2.8.0",

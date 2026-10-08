@@ -75,7 +75,7 @@ router.get('/', async (req, res, next) => {
     <p class="text-slate-500">Book unique stays in Madeira, direct from owners.</p>
   </header>
 
-  <form method="GET" action="/" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-8 flex flex-wrap items-end gap-3">
+  <form method="GET" action="/" id="dateSearchForm" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-8 flex flex-wrap items-end gap-3">
     <div class="flex-1 min-w-[160px]">
       <label class="block text-xs uppercase text-slate-500 mb-1">Arrival</label>
       <input type="date" name="arrival" value="${esc(arrival)}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
@@ -84,14 +84,14 @@ router.get('/', async (req, res, next) => {
       <label class="block text-xs uppercase text-slate-500 mb-1">Departure</label>
       <input type="date" name="departure" value="${esc(departure)}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
     </div>
-    <button type="submit" class="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6">Search</button>
+    <button type="submit" id="searchBtn" class="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6">Search</button>
     ${hasDates ? '<a href="/" class="text-sm text-slate-500 hover:underline py-2">Clear</a>' : ''}
   </form>
 
-  ${searchErr ? '<div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3">' + esc(searchErr) + '</div>' : ''}
+  ${searchErr ? '<div id="searchErr" class="mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3">' + esc(searchErr) + '</div>' : ''}
 
   <h2 class="text-sm uppercase font-bold text-slate-500 mb-4">${hasDates ? 'Available ' + esc(arrival) + ' → ' + esc(departure) : 'Available properties'}</h2>
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     ${cards || '<p class="text-slate-400">No properties available for these dates</p>'}
   </div>
 
@@ -101,7 +101,99 @@ router.get('/', async (req, res, next) => {
     <a href="/legal/terms-of-service" class="hover:text-slate-700">Terms of Service</a>
   </footer>
 </div>
-</body></html>`);
+
+<div id="searchModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0" style="background:rgba(0,0,0,.5);" data-modal-close></div>
+  <div id="searchModalPanel" class="relative bg-white rounded-2xl shadow-xl w-full flex flex-col overflow-hidden" style="max-height:85vh;">
+    <div class="flex items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-slate-200">
+      <h2 id="searchModalTitle" class="text-sm uppercase font-bold text-slate-500"></h2>
+      <button type="button" id="searchModalClose" aria-label="Close" class="flex-shrink-0 text-slate-400 hover:text-slate-700 text-3xl leading-none px-1">&times;</button>
+    </div>
+    <div id="searchModalBody" class="overflow-y-auto px-5 py-4 grow"></div>
+    <div class="px-5 py-4 border-t border-slate-200">
+      <a id="searchModalAll" href="/" class="block text-center rounded-lg bg-slate-900 text-white font-bold py-2.5 hover:bg-slate-800">View all properties</a>
+    </div>
+  </div>
+</div>
+
+<style>
+#searchModalPanel{max-width:480px;}
+@media (min-width:768px){#searchModalPanel{max-width:900px;}}
+#searchBtn{transition:transform .15s ease,opacity .15s ease;}
+#searchBtn.mb-pressed{transform:scale(.98);opacity:.7;}
+#searchBtn:disabled{opacity:.7;cursor:default;}
+.mb-spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:mb-rot .7s linear infinite;vertical-align:-2px;margin-right:8px;}
+@keyframes mb-rot{to{transform:rotate(360deg);}}
+</style>
+
+<script>
+(function () {
+  var form = document.getElementById('dateSearchForm');
+  var btn = document.getElementById('searchBtn');
+  var modal = document.getElementById('searchModal');
+  var mBody = document.getElementById('searchModalBody');
+  var mTitle = document.getElementById('searchModalTitle');
+  var mAll = document.getElementById('searchModalAll');
+  var mClose = document.getElementById('searchModalClose');
+  if (!form || !btn || !modal) return;
+
+  var DATE_RE = /^\\d{4}-\\d{2}-\\d{2}$/;
+
+  function closeModal() {
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+  mClose.addEventListener('click', closeModal);
+  modal.querySelector('[data-modal-close]').addEventListener('click', closeModal);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+  });
+
+  form.addEventListener('submit', function (e) {
+    var a = form.querySelector('[name=arrival]').value;
+    var d = form.querySelector('[name=departure]').value;
+    if (!(DATE_RE.test(a) && DATE_RE.test(d) && a < d)) return;
+    e.preventDefault();
+
+    var url = '/?arrival=' + encodeURIComponent(a) + '&departure=' + encodeURIComponent(d);
+
+    btn.classList.add('mb-pressed');
+    setTimeout(function () { btn.classList.remove('mb-pressed'); }, 200);
+    btn.disabled = true;
+    btn.innerHTML = '<span class="mb-spin"></span>Searching...';
+
+    function resetBtn() {
+      btn.disabled = false;
+      btn.innerHTML = 'Search';
+      btn.classList.remove('mb-pressed');
+    }
+
+    fetch(url)
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var grid = doc.getElementById('resultsGrid');
+        var err = doc.getElementById('searchErr');
+        mTitle.textContent = 'Available ' + a + ' → ' + d;
+        mBody.innerHTML = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">'
+          + (grid && grid.innerHTML.trim() ? grid.innerHTML : '<p class="text-slate-400">No properties available for these dates</p>')
+          + '</div>';
+        if (err) mBody.insertAdjacentHTML('afterbegin', '<div class="mb-3">' + err.outerHTML + '</div>');
+        mAll.href = url;
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        resetBtn();
+      })
+      .catch(function () {
+        window.location.href = url;
+      });
+  });
+})();
+</script>
+<script src="/sounds.js" defer></script></body></html>`);
   } catch (e) {
     next(e);
   }
@@ -149,7 +241,7 @@ router.get('/booking-success', async (req, res) => {
     '<html><head><meta charset="utf-8"></head>'
     + '<body style="font-family:Arial;text-align:center;padding:40px;">'
     + body
-    + '</body></html>'
+    + '<script src="/sounds.js" defer></script></body></html>'
   );
 });
 
@@ -159,7 +251,7 @@ router.get('/booking-cancel', (req, res) => {
     + '<body style="font-family:Arial;text-align:center;padding:40px;">'
     + '<h2>Оплата отменена</h2>'
     + '<p>Бронь не создана. Попробуйте снова.</p>'
-    + '</body></html>'
+    + '<script src="/sounds.js" defer></script></body></html>'
   );
 });
 
@@ -188,7 +280,7 @@ router.get('/p/:slug', async (req, res, next) => {
         + '<body class="bg-slate-50 min-h-screen flex items-center justify-center px-6">'
         + '<div class="text-center"><h1 class="text-4xl font-black mb-2">404</h1>'
         + '<p class="text-slate-500 mb-4">Property not found</p>'
-        + '<a href="/" class="text-emerald-600 hover:underline">Go home</a></div></body></html>');
+        + '<a href="/" class="text-emerald-600 hover:underline">Go home</a></div><script src="/sounds.js" defer></script></body></html>');
     }
     const p = r.rows[0];
     const priceEuro = p.price_per_night ? Number(p.price_per_night).toFixed(0) : '—';
@@ -527,7 +619,7 @@ document.getElementById('bookForm').addEventListener('submit', async function (e
   }
 });
 </script>
-</body></html>`);
+<script src="/sounds.js" defer></script></body></html>`);
   } catch (e) {
     next(e);
   }
@@ -639,7 +731,7 @@ function renderLegal(title, content, lastUpdated) {
     <a href="/legal/terms-of-service" class="hover:text-slate-700">Terms of Service</a>
   </footer>
 </div>
-</body></html>`;
+<script src="/sounds.js" defer></script></body></html>`;
 }
 
 function legalHandler(table, fallbackTitle) {

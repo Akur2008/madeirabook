@@ -44,7 +44,7 @@ router.get('/:slug', async (req, res, next) => {
         + '<body class="bg-slate-50 min-h-screen flex items-center justify-center px-6">'
         + '<div class="text-center"><h1 class="text-5xl font-black mb-4">404</h1>'
         + '<p class="text-slate-500 mb-6">Guide not found.</p>'
-        + '<a href="/" class="text-emerald-600 hover:underline">&larr; Home</a></div></body></html>');
+        + '<a href="/" class="text-emerald-600 hover:underline">&larr; Home</a></div><script src="/sounds.js" defer></script></body></html>');
     }
 
     const guide = gRes.rows[0];
@@ -150,7 +150,7 @@ router.get('/:slug', async (req, res, next) => {
     <a href="/legal/terms-of-service" class="hover:text-slate-700">Terms of Service</a>
   </footer>
 </article>
-</body>
+<script src="/sounds.js" defer></script></body>
 </html>`);
   } catch (e) {
     logger.error({ err: e.message, slug: req.params.slug }, 'guide page error');

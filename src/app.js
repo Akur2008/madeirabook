@@ -13,6 +13,7 @@ const webhookRoutes = require('./routes/webhook');
 const subscribeRoutes = require('./routes/subscribe');
 const availabilityRoutes = require('./routes/availability');
 const cronRoutes = require('./routes/cron');
+const soundsRoutes = require('./routes/sounds');
 const gatewayRoutes = require('./routes/gateways');
 const telegramRoutes = require('./routes/telegram');
 const ownerRoutes = require('./routes/owner');
@@ -100,6 +101,7 @@ app.use('/api/bookings', bookingsRoutes);
 app.use('/api/subscribe', subscribeRoutes);
 app.use('/api/check-availability', availabilityRoutes);
 app.use('/api/cron', cronRoutes);
+app.use('/api/sounds', soundsRoutes);
 app.use('/gateway', gatewayRoutes);
 app.use('/webhook', webhookRoutes);
 app.use('/webhook/stripe', webhookRoutes);
@@ -107,6 +109,12 @@ app.use('/webhook/telegram', telegramRoutes);
 app.use('/owner', ownerRoutes);
 app.use('/oasis', oasisRoutes);
 app.use('/g', guidesRoutes);
+// Статика звуковой кнопки
+app.get('/sounds.js', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile(require('path').join(__dirname, '..', 'public', 'sounds.js'));
+});
+
 app.use('/', pagesRoutes);
 
 // 7. Обработчик ошибок — ВСЕГДА последний

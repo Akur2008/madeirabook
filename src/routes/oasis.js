@@ -24,7 +24,7 @@ router.get('/:slug', async (req, res, next) => {
         + '<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center">'
         + '<div class="text-center"><h1 class="text-5xl font-light mb-4">404</h1>'
         + '<p class="text-slate-400 mb-6">This sanctuary does not exist.</p>'
-        + '<a href="/" class="text-cyan-400 hover:underline">&larr; Return home</a></div></body></html>');
+        + '<a href="/" class="text-cyan-400 hover:underline">&larr; Return home</a></div><script src="/sounds.js" defer></script></body></html>');
     }
     const prop = r.rows[0];
 
@@ -184,7 +184,7 @@ router.get('/:slug', async (req, res, next) => {
 })();
 </script>
 
-</body>
+<script src="/sounds.js" defer></script></body>
 </html>`);
   } catch (e) {
     next(e);
