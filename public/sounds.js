@@ -136,7 +136,8 @@
 
     // Fetch звук для текущей страницы
     try {
-      const r = await fetch('/api/sounds/active?page=' + encodeURIComponent(p + window.location.search));
+      const apiBase = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? '' : 'https://app.madeirabook.com';
+      const r = await fetch(apiBase + '/api/sounds/active?page=' + encodeURIComponent(p + window.location.search));
       const data = await r.json();
       if (!data || !data.ok || !data.sound) return; // нет звука — не показываем кнопку
       soundData = data.sound;
@@ -149,6 +150,23 @@
     audio.preload = 'none';
 
     createButton();
+
+    // === Auto-start sound on first quiz interaction (gateway pages) ===
+    if (location.pathname.startsWith('/gateway/')) {
+      document.addEventListener('click', function (e) {
+        // Клик по самой кнопке звука — не мешаем
+        if (btn && btn.contains(e.target)) return;
+        // Уже играет — ничего
+        if (audio && !audio.paused) return;
+        // Пользователь выключил вручную в этой сессии — уважаем
+        if (userDisabled) return;
+        // Пользователь выключил вручную ранее — уважаем
+        try { if (localStorage.getItem(LS_KEY) === '0') return; } catch (err) {}
+        // Автостарт
+        userDisabled = false;
+        tryPlay();
+      }, { passive: true });
+    }
 
     // Если пользователь включал ранее — пробуем автозапуск
     let wasOn = false;
