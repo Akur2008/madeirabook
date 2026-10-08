@@ -94,7 +94,7 @@
   // === Играть / пауза ===
   function play() {
     if (!audio || !soundData) return;
-    const versionedUrl = soundData.url + '?v=2';
+    const versionedUrl = soundData.url + '?v=3';
     if (audio.src !== versionedUrl) audio.src = versionedUrl;
     audio.volume = 0;
     audio.play().then(function () {
@@ -177,7 +177,7 @@
 
   function tryPlay() {
     if (!audio || !soundData) return;
-    const versionedUrl = soundData.url + '?v=2';
+    const versionedUrl = soundData.url + '?v=3';
     if (audio.src !== versionedUrl) audio.src = versionedUrl;
     audio.volume = 0;
     audio.play().then(function () {
