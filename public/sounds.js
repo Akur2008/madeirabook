@@ -123,8 +123,8 @@
 
   function toggle() {
     if (!audio) return;
-    if (audio.paused) play();
-    else pause();
+    if (audio.paused) { userDisabled = false; play(); }
+    else { userDisabled = true; pause(); }
   }
 
   // === Init ===
@@ -154,9 +154,40 @@
     try { wasOn = localStorage.getItem(LS_KEY) === '1'; } catch (e) {}
 
     if (wasOn) {
-      // Автозапуск может быть заблокирован браузером — тогда покажем кнопку пульсирующей
-      play();
+      // Пробуем автоплей сразу
+      tryPlay();
+
+      // Плюс — подстраховка: при первом клике в любом месте страницы
+      // пробуем возобновить звук (user gesture снимает autoplay-блок)
+      const resumeOnInteraction = function () {
+        document.removeEventListener('pointerdown', resumeOnInteraction);
+        document.removeEventListener('click', resumeOnInteraction);
+        if (audio && audio.paused && wasOn && !userDisabled) {
+          tryPlay();
+        }
+      };
+      document.addEventListener('pointerdown', resumeOnInteraction, { passive: true });
+      document.addEventListener('click', resumeOnInteraction, { passive: true });
     }
+  }
+
+  // Флаг: пользователь вручную выключил звук — тогда не восстанавливать
+  let userDisabled = false;
+
+  function tryPlay() {
+    if (!audio || !soundData) return;
+    if (audio.src !== soundData.url) audio.src = soundData.url;
+    audio.volume = 0;
+    audio.play().then(function () {
+      fadeTo(0.5, 900);
+      if (btn) {
+        btn.textContent = '🔊';
+        btn.classList.add('on');
+      }
+      try { localStorage.setItem(LS_KEY, '1'); } catch (e) {}
+    }).catch(function () {
+      // Тихая неудача — пользователь увидит пульсирующую кнопку и тапнет
+    });
   }
 
   if (document.readyState === 'loading') {
