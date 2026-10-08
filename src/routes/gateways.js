@@ -131,6 +131,33 @@ function render() {
     ans.appendChild(b);
   });
 }
+// iOS Safari autoplay fix
+(function() {
+  var v = document.querySelector('.stage video');
+  if (!v) return;
+  v.muted = true;
+  v.setAttribute('playsinline', '');
+  v.setAttribute('webkit-playsinline', '');
+  var tryPlay = function() {
+    var p = v.play();
+    if (p && p.catch) {
+      p.catch(function() {
+        // Автоплей заблокирован — стартуем по первому тапу в любом месте
+        var resume = function() {
+          document.removeEventListener('touchstart', resume);
+          document.removeEventListener('click', resume);
+          v.play();
+        };
+        document.addEventListener('touchstart', resume, { passive: true });
+        document.addEventListener('click', resume, { passive: true });
+      });
+    }
+  };
+  if (v.readyState >= 2) tryPlay();
+  else v.addEventListener('loadeddata', tryPlay);
+  v.addEventListener('canplay', tryPlay);
+})();
+
 document.getElementById('openBtn').onclick = () => {
   const qs = TAGS.length ? ('?tags=' + TAGS.join(',')) : '';
   window.location.href = TARGET + qs;
