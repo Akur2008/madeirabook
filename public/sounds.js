@@ -6,6 +6,8 @@
 (function () {
   'use strict';
 
+  let userDisabled = false;
+
   const LS_KEY = 'mb_sound_on';
   const LS_MUTED_SESSION = 'mb_sound_asked';
 
@@ -72,6 +74,22 @@
     btn.textContent = '🔇';
     btn.addEventListener('click', toggle);
     document.body.appendChild(btn);
+
+    // Если на странице есть WhatsApp-кнопка (wa.me) — поднимаем звук выше
+    setTimeout(function() {
+      var wa = document.querySelector('a[href*="wa.me"], a[href*="whatsapp"]');
+      if (wa) {
+        var waRect = wa.getBoundingClientRect();
+        var btnRect = btn.getBoundingClientRect();
+        // Если пересекаются
+        var overlapX = !(waRect.right < btnRect.left || waRect.left > btnRect.right);
+        var overlapY = !(waRect.bottom < btnRect.top || waRect.top > btnRect.bottom);
+        if (overlapX && overlapY) {
+          // Поднимаем звук выше WhatsApp
+          btn.style.bottom = (window.innerHeight - waRect.top + 12) + 'px';
+        }
+      }
+    }, 400);
   }
 
   // === Fade in/out ===
@@ -160,8 +178,7 @@
         if (audio && !audio.paused) return;
         // Пользователь выключил вручную в этой сессии — уважаем
         if (userDisabled) return;
-        // Пользователь выключил вручную ранее — уважаем
-        try { if (localStorage.getItem(LS_KEY) === '0') return; } catch (err) {}
+        // Сессия — свежая, автозапуск разрешён
         // Автостарт
         userDisabled = false;
         tryPlay();
@@ -191,8 +208,6 @@
   }
 
   // Флаг: пользователь вручную выключил звук — тогда не восстанавливать
-  let userDisabled = false;
-
   function tryPlay() {
     if (!audio || !soundData) return;
     const versionedUrl = soundData.url + '?v=4';
