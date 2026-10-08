@@ -23,6 +23,20 @@ function wrapper(posterUrl, title, bodyText, ctaText, ctaUrl) {
 }
 
 const templates = {
+  gateway_ocean_reactivation: () => ({
+    subject: 'We saved you a way in',
+    text: 'You left us your email a while back. We haven\'t forgotten. Here\'s the entrance to four elements of Madeira: https://app.madeirabook.com/gateway/ocean',
+    html: wrapper(
+      null,
+      'We saved you a way in',
+      '<p>You left us your email a while back. We haven\'t forgotten.</p>'
+      + '<p>Since then we\'ve built something quiet — four ways into the island, each one tuned to a different mood.</p>'
+      + '<p>Two questions. Then we show you the sea, the forest, the sun, or the wild north. Your choice.</p>',
+      'Find your element →',
+      'https://app.madeirabook.com/gateway/ocean?utm_source=email&utm_campaign=reactivation'
+    ),
+  }),
+
   gateway_ocean: () => ({
     subject: 'The ocean doesn\'t ask questions — but you do',
     text: 'Two questions. Then we show you the sea. Click to enter: https://app.madeirabook.com/gateway/ocean',
