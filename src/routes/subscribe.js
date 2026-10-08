@@ -28,6 +28,7 @@ router.post('/', async (req, res) => {
       const subId = ins.rows[0].id;
       await db.query(
         `INSERT INTO email_queue (subscriber_id, template, send_at) VALUES
+          ($1, 'gateway_ocean',      NOW() + INTERVAL '1 day'),
           ($1, 'restaurants_funchal', NOW() + INTERVAL '7 days'),
           ($1, 'madeira_winter',     NOW() + INTERVAL '21 days'),
           ($1, 'return_offer',       NOW() + INTERVAL '45 days')`,

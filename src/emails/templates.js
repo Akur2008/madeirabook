@@ -23,6 +23,20 @@ function wrapper(posterUrl, title, bodyText, ctaText, ctaUrl) {
 }
 
 const templates = {
+  gateway_ocean: () => ({
+    subject: 'The ocean doesn\'t ask questions — but you do',
+    text: 'Two questions. Then we show you the sea. Click to enter: https://app.madeirabook.com/gateway/ocean',
+    html: wrapper(
+      null,
+      'The ocean doesn\'t ask questions',
+      '<p>But you do. And we have answers.</p>'
+      + '<p>Two questions. Then we show you the sea.</p>'
+      + '<p>Which element of Madeira is yours — the wild ocean, the misty forest, the sun on the basalt, or the waterfalls of the north?</p>',
+      'Enter the gateway →',
+      'https://app.madeirabook.com/gateway/ocean?utm_source=email&utm_campaign=gateway_ocean'
+    ),
+  }),
+
   restaurants_funchal: () => ({
     subject: '5 restaurants in Funchal with 30–50% off',
     text: 'Inside: 5 restaurants in Funchal with TheFork discounts. Click to see the guide.',
