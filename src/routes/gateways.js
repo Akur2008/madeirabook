@@ -129,14 +129,14 @@ ${g.poster_url ? '<meta property="og:image" content="' + esc(g.poster_url) + '">
   .stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.75); }
   .stage::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,10,0.15) 0%, rgba(10,10,10,0.35) 50%, rgba(10,10,10,0.75) 100%); }
 
-  .overlay { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 20px 16px 60px 16px; }
+  .overlay { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 20px 12px 24px 12px; }
 
-  .glass { background: rgba(10,10,10,0.04); backdrop-filter: blur(14px) saturate(110%); -webkit-backdrop-filter: blur(14px) saturate(110%); border: 1px solid rgba(var(--accent-rgb), 0.20); border-radius: 20px; padding: 24px 22px; max-width: 480px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
+  .glass { background: rgba(10,10,10,0.02); backdrop-filter: blur(4px) saturate(105%); -webkit-backdrop-filter: blur(4px) saturate(105%); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px 14px; max-width: 400px; width: 100%; }
 
-  .title { font-size: 34px; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.5px; line-height: 1.1; text-shadow: 0 2px 12px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.9); }
-  .subtitle { color: #e0e0e5; font-size: 15px; margin: 0 0 28px 0; line-height: 1.4; text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
-  .q-title { font-size: 20px; margin-bottom: 16px; font-weight: 600; text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
-  .btn-answer { display: block; width: 100%; text-align: left; padding: 16px 18px; border-radius: 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #f5f5f7; font-size: 15px; margin-bottom: 10px; cursor: pointer; transition: all .2s; font-family: Georgia, serif; -webkit-tap-highlight-color: transparent; text-shadow: 0 1px 4px rgba(0,0,0,0.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  .title { font-size: 24px; font-weight: 800; margin: 0 0 6px 0; letter-spacing: -0.3px; line-height: 1.15; text-shadow: 0 2px 12px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.9); }
+  .subtitle { color: #e0e0e5; font-size: 12px; margin: 0 0 16px 0; line-height: 1.35; text-shadow: 0 1px 6px rgba(0,0,0,0.75); }
+  .q-title { font-size: 15px; margin-bottom: 10px; font-weight: 600; text-shadow: 0 1px 6px rgba(0,0,0,0.75); }
+  .btn-answer { display: block; width: 100%; text-align: left; padding: 11px 14px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); color: #f5f5f7; font-size: 13px; margin-bottom: 8px; cursor: pointer; transition: all .2s; font-family: Georgia, serif; -webkit-tap-highlight-color: transparent; text-shadow: 0 1px 4px rgba(0,0,0,0.7); }
   .btn-answer:hover, .btn-answer:active { background: rgba(var(--accent-rgb), 0.2); border-color: rgba(var(--accent-rgb), 0.5); }
 
   .sound-btn { position: fixed; top: 16px; right: 16px; z-index: 3; width: 44px; height: 44px; border-radius: 50%; background: rgba(10,10,10,0.5); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.2); color: #f5f5f7; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: all .2s; -webkit-tap-highlight-color: transparent; }
@@ -181,7 +181,7 @@ ${g.poster_url ? '<meta property="og:image" content="' + esc(g.poster_url) + '">
         <div class="q-title" id="qText"></div>
         <div id="answers"></div>
       </div>
-      <button id="openBtn" style="display:none;width:100%;padding:18px;border-radius:12px;background:rgba(255,255,255,0.04);backdrop-filter:blur(20px) saturate(120%);-webkit-backdrop-filter:blur(20px) saturate(120%);color:#f5f5f7;font-weight:800;font-size:16px;border:1px solid rgba(255,255,255,0.6);cursor:pointer;font-family:Georgia,serif;-webkit-tap-highlight-color: transparent;text-shadow:0 1px 4px rgba(0,0,0,0.5);">Open sanctuary →</button>
+      <button id="openBtn" style="display:none;width:100%;padding:12px;border-radius:10px;background:rgba(255,255,255,0.04);backdrop-filter:blur(8px) saturate(105%);-webkit-backdrop-filter:blur(8px) saturate(105%);color:#f5f5f7;font-weight:800;font-size:13px;border:1px solid rgba(255,255,255,0.6);cursor:pointer;font-family:Georgia,serif;-webkit-tap-highlight-color: transparent;text-shadow:0 1px 4px rgba(0,0,0,0.5);">Open sanctuary →</button>
     </div>
   </div>
   <a href="/" class="back-link">← Madeirabook</a>
