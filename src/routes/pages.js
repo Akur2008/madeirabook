@@ -193,7 +193,7 @@ router.get('/', async (req, res, next) => {
   });
 })();
 </script>
-<script src="/sounds.js" defer></script></body></html>`);
+<script src="/sounds.js" defer></script><script src="/whatsapp.js" defer></script></body></html>`);
   } catch (e) {
     next(e);
   }
@@ -241,7 +241,7 @@ router.get('/booking-success', async (req, res) => {
     '<html><head><meta charset="utf-8"></head>'
     + '<body style="font-family:Arial;text-align:center;padding:40px;">'
     + body
-    + '<script src="/sounds.js" defer></script></body></html>'
+    + '<script src="/sounds.js" defer></script><script src="/whatsapp.js" defer></script></body></html>'
   );
 });
 
@@ -251,7 +251,7 @@ router.get('/booking-cancel', (req, res) => {
     + '<body style="font-family:Arial;text-align:center;padding:40px;">'
     + '<h2>Оплата отменена</h2>'
     + '<p>Бронь не создана. Попробуйте снова.</p>'
-    + '<script src="/sounds.js" defer></script></body></html>'
+    + '<script src="/sounds.js" defer></script><script src="/whatsapp.js" defer></script></body></html>'
   );
 });
 
@@ -280,7 +280,7 @@ router.get('/p/:slug', async (req, res, next) => {
         + '<body class="bg-slate-50 min-h-screen flex items-center justify-center px-6">'
         + '<div class="text-center"><h1 class="text-4xl font-black mb-2">404</h1>'
         + '<p class="text-slate-500 mb-4">Property not found</p>'
-        + '<a href="/" class="text-emerald-600 hover:underline">Go home</a></div><script src="/sounds.js" defer></script></body></html>');
+        + '<a href="/" class="text-emerald-600 hover:underline">Go home</a></div><script src="/sounds.js" defer></script><script src="/whatsapp.js" defer></script></body></html>');
     }
     const p = r.rows[0];
     const priceEuro = p.price_per_night ? Number(p.price_per_night).toFixed(0) : '—';
@@ -619,7 +619,7 @@ document.getElementById('bookForm').addEventListener('submit', async function (e
   }
 });
 </script>
-<script src="/sounds.js" defer></script></body></html>`);
+<script src="/sounds.js" defer></script><script src="/whatsapp.js" defer></script></body></html>`);
   } catch (e) {
     next(e);
   }
@@ -731,7 +731,7 @@ function renderLegal(title, content, lastUpdated) {
     <a href="/legal/terms-of-service" class="hover:text-slate-700">Terms of Service</a>
   </footer>
 </div>
-<script src="/sounds.js" defer></script></body></html>`;
+<script src="/sounds.js" defer></script><script src="/whatsapp.js" defer></script></body></html>`;
 }
 
 function legalHandler(table, fallbackTitle) {

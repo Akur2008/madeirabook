@@ -83,7 +83,7 @@ router.get('/', async (req, res, next) => {
   <h1 class="font-cormorant text-4xl sm:text-5xl font-semibold mb-10">Gateways</h1>
   ${sections || '<p class="text-white/50">No gateways published yet.</p>'}
 </main>
-<script src="/sounds.js" defer></script></body></html>`);
+<script src="/sounds.js" defer></script><script src="/whatsapp.js" defer></script></body></html>`);
   } catch (e) {
     next(e);
   }
@@ -97,7 +97,7 @@ router.get('/:slug', async (req, res, next) => {
       [slug]
     );
     if (!r.rows.length) {
-      return res.status(404).send('<!DOCTYPE html><html><head><title>404</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-black min-h-screen flex items-center justify-center text-slate-200"><div class="text-center"><h1 class="text-6xl font-black mb-4">404</h1><p class="mb-6">Gateway not found</p><a href="/" class="text-cyan-400 hover:underline">Go home</a></div><script src="/sounds.js" defer></script></body></html>');
+      return res.status(404).send('<!DOCTYPE html><html><head><title>404</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-black min-h-screen flex items-center justify-center text-slate-200"><div class="text-center"><h1 class="text-6xl font-black mb-4">404</h1><p class="mb-6">Gateway not found</p><a href="/" class="text-cyan-400 hover:underline">Go home</a></div><script src="/sounds.js" defer></script><script src="/whatsapp.js" defer></script></body></html>');
     }
     const g = r.rows[0];
     const questions = Array.isArray(g.questions) ? g.questions : [];
@@ -250,7 +250,7 @@ render();
 
 
 </script>
-<script src="/sounds.js" defer></script></body></html>`);
+<script src="/sounds.js" defer></script><script src="/whatsapp.js" defer></script></body></html>`);
   } catch (e) {
     next(e);
   }

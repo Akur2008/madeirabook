@@ -116,6 +116,11 @@ app.get('/sounds.js', (req, res) => {
   res.sendFile(require('path').join(__dirname, '..', 'public', 'sounds.js'));
 });
 
+app.get('/whatsapp.js', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile(require('path').join(__dirname, '..', 'public', 'whatsapp.js'));
+});
+
 app.use('/', pagesRoutes);
 
 // 7. Обработчик ошибок — ВСЕГДА последний
