@@ -1,80 +1,228 @@
+const crypto = require('crypto');
 const https = require('https');
-const config = require('../../config');
 const logger = require('../../logger');
 
 // База URL — переключается через env (sandbox / live)
 const BASE = process.env.ZEEVOU_BASE_URL || process.env.ZEEVOU_SANDBOX_URL || 'https://sandbox.zeevou.com';
-const CLIENT_ID = process.env.ZEEVOU_OAUTH_CRED_CLIENT_ID;
-const CLIENT_SECRET = process.env.ZEEVOU_OAUTH_CRED_CLIENT_SECRET;
-
-// Кэш токена в памяти инстанса
-let tokenCache = { value: null, expiresAt: 0 };
+const HOST = new URL(BASE).hostname;
 
 /**
- * Получает OAuth2 access_token (Client Credentials).
- * Кэширует до истечения.
+ * Персональный токен из env (OAuth flow — отдельная задача).
  */
-async function getToken() {
-  const now = Date.now();
-  if (tokenCache.value && tokenCache.expiresAt > now + 60_000) {
-    return tokenCache.value;
-  }
-  const res = await fetch(BASE + '/oauth2-token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-    }),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    logger.error({ status: res.status, body }, 'zeevou token error');
-    throw new Error('Zeevou auth failed: ' + res.status);
-  }
-  const data = await res.json();
-  if (!data.access_token) throw new Error('Zeevou: no access_token in response');
-  tokenCache.value = data.access_token;
-  tokenCache.expiresAt = now + (data.expires_in || 3600) * 1000;
-  return tokenCache.value;
+function getToken() {
+  const token = process.env.ZEEVOU_API_TOKEN;
+  if (!token) throw new Error('ZEEVOU_API_TOKEN missing');
+  return token;
 }
 
 /**
- * Универсальный запрос к Zeevou API.
+ * Универсальный HTTPS-запрос к Zeevou API (Bearer).
+ * @param {string} method
+ * @param {string} path - например '/apis/properties'
+ * @param {object|null} bodyObj - JSON body
+ * @param {object|null} queryObj - query params
+ * @param {Buffer|null} rawBody - если задан, шлём как есть (multipart)
+ * @param {string|null} rawContentType - Content-Type для rawBody
  */
-async function apiGet(path, query) {
-  const token = await getToken();
-  const url = new URL(BASE + path);
-  if (query) Object.entries(query).forEach(([k, v]) => url.searchParams.set(k, v));
-  const res = await fetch(url, {
-    headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    logger.error({ path, status: res.status, body }, 'zeevou GET error');
-    throw new Error('Zeevou GET ' + path + ' failed: ' + res.status);
+async function zeevouRequest(method, path, bodyObj, queryObj, rawBody, rawContentType) {
+  const token = getToken();
+  const bodyStr = rawBody || (bodyObj ? JSON.stringify(bodyObj) : '');
+  let urlPath = path;
+  if (queryObj && Object.keys(queryObj).length) {
+    const params = new URLSearchParams();
+    Object.keys(queryObj).sort().forEach((k) => {
+      if (queryObj[k] !== undefined && queryObj[k] !== null) {
+        params.append(k, String(queryObj[k]));
+      }
+    });
+    const qs = params.toString();
+    if (qs) urlPath += '?' + qs;
   }
-  return res.json();
+
+  const headers = {
+    'Authorization': 'Bearer ' + token,
+    'Accept': 'application/json',
+    'Content-Length': rawBody ? rawBody.length : Buffer.byteLength(bodyStr || '', 'utf8'),
+  };
+  if (rawBody) {
+    headers['Content-Type'] = rawContentType;
+  } else if (bodyObj) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const options = {
+    hostname: HOST,
+    port: 443,
+    path: urlPath,
+    method,
+    headers,
+  };
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => {
+        let parsed;
+        try { parsed = data ? JSON.parse(data) : {}; } catch { parsed = { raw: data }; }
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(parsed);
+        } else {
+          logger.error({ path, method, status: res.statusCode, body: parsed }, 'zeevou request error');
+          const err = new Error('Zeevou ' + method + ' ' + path + ' failed: ' + res.statusCode);
+          err.status = res.statusCode;
+          err.body = parsed;
+          reject(err);
+        }
+      });
+    });
+    req.on('error', reject);
+    if (rawBody) req.write(rawBody); else if (bodyStr) req.write(bodyStr);
+    req.end();
+  });
 }
 
-async function apiPost(path, body) {
-  const token = await getToken();
-  const res = await fetch(BASE + path, {
-    method: 'POST',
-    headers: {
-      Authorization: 'Bearer ' + token,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
+function apiGet(path, query) { return zeevouRequest('GET', path, null, query); }
+function apiPost(path, body) { return zeevouRequest('POST', path, body); }
+function apiPut(path, body) { return zeevouRequest('PUT', path, body); }
+
+/**
+ * Скачать файл по URL в Buffer (Vercel Blob и др.). Следует редиректам.
+ */
+function fetchBuffer(url, redirectsLeft = 3) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const req = https.request({
+      hostname: u.hostname,
+      port: 443,
+      path: u.pathname + u.search,
+      method: 'GET',
+    }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && redirectsLeft > 0) {
+        res.resume();
+        return resolve(fetchBuffer(res.headers.location, redirectsLeft - 1));
+      }
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error('download failed: HTTP ' + res.statusCode + ' ' + url));
+      }
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+/**
+ * Загрузить файл в Zeevou (multipart POST /apis/files).
+ * @returns {Promise<{id: number}>} file id
+ */
+async function uploadFile(localBuffer, fileName, mimeType) {
+  const boundary = '----zeevou' + crypto.randomBytes(12).toString('hex');
+  const head = Buffer.from(
+    '--' + boundary + '\r\n'
+    + 'Content-Disposition: form-data; name="file"; filename="' + String(fileName || 'file').replace(/"/g, '') + '"\r\n'
+    + 'Content-Type: ' + (mimeType || 'application/octet-stream') + '\r\n\r\n',
+    'utf8'
+  );
+  const tail = Buffer.from('\r\n--' + boundary + '--\r\n', 'utf8');
+  const body = Buffer.concat([head, localBuffer, tail]);
+  const parsed = await zeevouRequest('POST', '/apis/files', null, null, body, 'multipart/form-data; boundary=' + boundary);
+  logger.info({ fileId: parsed.id, fileName }, 'zeevou file uploaded');
+  return { id: parsed.id };
+}
+
+/**
+ * Привязать файл к объекту как изображение.
+ * @param {number} propertyId
+ * @param {number} fileId
+ * @param {string} caption
+ * @param {number} priority
+ */
+async function uploadPropertyImage(propertyId, fileId, caption, priority) {
+  return apiPost('/apis/property_images', {
+    property: propertyId,
+    file: fileId,
+    image_caption: caption || null,
+    priority: priority || null,
+  });
+}
+
+/**
+ * Создать объект (property) в Zeevou.
+ * @param {object} data
+ * @param {string} data.name
+ * @param {string} [data.shortName]
+ * @param {string} data.description
+ * @param {object} [data.address] - {street, postalCode, city, country}
+ * @param {number|string} data.area - id или IRI зоны
+ * @param {number|string} data.currency - id или IRI валюты
+ * @param {string} [data.unitTypeName]
+ * @param {number} [data.maxCapacity]
+ * @returns {Promise<object>} созданный property ({ id, ... })
+ */
+async function createProperty(data) {
+  const body = {
+    name: data.name,
+    short_name: (data.shortName || data.name || '').slice(0, 50),
+    description: data.description || '',
+    address: {
+      first_line: data.address && data.address.street,
+      postal_code: data.address && data.address.postalCode,
+      city: data.address && data.address.city,
+      country: data.address && data.address.country,
     },
-    body: JSON.stringify(body),
+    area: data.area,
+    default_currency: data.currency,
+    is_active: true,
+    google_enabled: true,
+    allow_direct_booking: true,
+    publish_on_zeevou_direct: true,
+    unit_types: [{
+      name: data.unitTypeName || 'Entire property',
+      maximum_capacity: data.maxCapacity || 2,
+    }],
+  };
+  const created = await apiPost('/apis/properties', body);
+  logger.info({ id: created.id, name: data.name }, 'zeevou property created');
+  return created;
+}
+
+/** Alias для обратной совместимости со старым стабом. */
+async function createZeevouProperty(data) {
+  return createProperty(data);
+}
+
+/**
+ * Обновить объект.
+ */
+async function updateProperty(id, data) {
+  return apiPut('/apis/properties/' + id, data);
+}
+
+/**
+ * Получить объект по id.
+ */
+async function getProperty(id) {
+  return apiGet('/apis/properties/' + id);
+}
+
+/**
+ * Пакетная загрузка тарифов.
+ * @param {number} propertyId
+ * @param {number} [ratePlanId]
+ * @param {Array<{date:string, rate:number}>} prices
+ */
+async function setRates(propertyId, ratePlanId, prices) {
+  const items = (prices || []).map((p) => {
+    const item = { date: p.date, rate: p.rate };
+    if (ratePlanId) item.rate_plan = ratePlanId;
+    if (propertyId) item.property = propertyId;
+    return item;
   });
-  if (!res.ok) {
-    const text = await res.text();
-    logger.error({ path, status: res.status, body: text }, 'zeevou POST error');
-    throw new Error('Zeevou POST ' + path + ' failed: ' + res.status);
-  }
-  return res.json();
+  return apiPost('/apis/rates_batch', items);
 }
 
 /**
@@ -103,7 +251,6 @@ async function getAvailability(propertyId, from, to) {
  * @returns {Promise<number|null>} минимальная цена за ночь (в EUR), или null если нет
  */
 async function getPrice(propertyId, arrivalDate, departureDate) {
-  // Пробуем rate_and_availability — это основной источник цены
   try {
     const data = await apiGet('/apis/rate_and_availability', {
       'unit_type.property.id': propertyId,
@@ -112,7 +259,6 @@ async function getPrice(propertyId, arrivalDate, departureDate) {
     });
     const list = Array.isArray(data) ? data : (data['hydra:member'] || data.data || []);
     if (!list.length) return null;
-    // Ищем минимальную цену за ночь в списке
     let min = Infinity;
     for (const r of list) {
       const price = r.price || r.amount || r.rate || (r.rate_plan && r.rate_plan.price);
@@ -176,99 +322,23 @@ async function markPaid(zeevouBookingId) {
  * Отменить бронь.
  */
 async function cancelReservation(zeevouBookingId) {
-  const token = await getToken();
-  const res = await fetch(BASE + '/apis/bookings/cancel', {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer ' + token,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({ id: zeevouBookingId, cancellation_reason: 'Cancelled by guest' }),
-  });
-  if (!res.ok) throw new Error('Zeevou cancel failed: ' + res.status);
-  return res.json();
-}
-
-/**
- * Создать объект (property) в Zeevou.
- * Авторизация — заглушка через статический ZEEVOU_API_TOKEN (OAuth подключим позже).
- * @param {object} data
- * @param {string} data.name
- * @param {string} data.description
- * @param {object} data.address - {street, postalCode, city, country}
- * @param {string} data.unitTypeName
- * @param {number} data.maxCapacity
- * @returns {Promise<object>} созданный property ({ id, ... })
- */
-async function createZeevouProperty(data) {
-  const token = process.env.ZEEVOU_API_TOKEN;
-  if (!token) throw new Error('ZEEVOU_API_TOKEN missing in env');
-
-  const bodyObj = {
-    name: data.name,
-    short_name: data.name,
-    description: data.description,
-    default_currency: 'EUR',
-    is_active: true,
-    google_enabled: true,
-    allow_direct_booking: true,
-    publish_on_zeevou_direct: true,
-    address: {
-      first_line: data.address && data.address.street,
-      postal_code: data.address && data.address.postalCode,
-      city: data.address && data.address.city,
-      country: data.address && data.address.country,
-    },
-    unit_types: [{
-      name: data.unitTypeName || 'Studio',
-      maximum_capacity: data.maxCapacity || 4,
-    }],
-  };
-  const bodyStr = JSON.stringify(bodyObj);
-  const url = new URL(BASE + '/apis/properties');
-
-  const options = {
-    hostname: url.hostname,
-    port: 443,
-    path: url.pathname,
-    method: 'POST',
-    headers: {
-      Authorization: 'Bearer ' + token,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Content-Length': Buffer.byteLength(bodyStr, 'utf8'),
-    },
-  };
-
-  return new Promise((resolve, reject) => {
-    const req = https.request(options, (res) => {
-      let raw = '';
-      res.on('data', (chunk) => (raw += chunk));
-      res.on('end', () => {
-        let parsed;
-        try { parsed = raw ? JSON.parse(raw) : {}; } catch { parsed = { raw }; }
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          logger.info({ id: parsed.id }, 'zeevou property created');
-          resolve(parsed);
-        } else {
-          logger.error({ status: res.statusCode, body: parsed }, 'zeevou POST /apis/properties error');
-          const err = new Error('Zeevou POST /apis/properties failed: ' + res.statusCode);
-          err.status = res.statusCode;
-          err.body = parsed;
-          reject(err);
-        }
-      });
-    });
-    req.on('error', reject);
-    req.write(bodyStr);
-    req.end();
+  return apiPut('/apis/bookings/cancel', {
+    id: zeevouBookingId,
+    cancellation_reason: 'Cancelled by guest',
   });
 }
 
 module.exports = {
   getToken,
+  zeevouRequest,
+  fetchBuffer,
+  uploadFile,
+  uploadPropertyImage,
+  createProperty,
   createZeevouProperty,
+  updateProperty,
+  getProperty,
+  setRates,
   getProperties,
   getAvailability,
   getPrice,

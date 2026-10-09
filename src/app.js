@@ -103,6 +103,7 @@ app.use('/api/check-availability', availabilityRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/sounds', soundsRoutes);
 app.use('/gateway', gatewayRoutes);
+app.use('/gateways', gatewayRoutes);
 app.use('/webhook', webhookRoutes);
 app.use('/webhook/stripe', webhookRoutes);
 app.use('/webhook/telegram', telegramRoutes);

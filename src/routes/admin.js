@@ -3,6 +3,8 @@ const express = require('express');
 const db = require('../../db/client');
 const stripeSvc = require('../services/stripe');
 const config = require('../config');
+const logger = require('../logger');
+const zeevou = require('../services/pms/zeevou');
 const { Resend } = require('resend');
 
 const router = express.Router();
@@ -543,6 +545,92 @@ router.post('/verify/:id', async (req, res, next) => {
       await db.query('UPDATE properties SET is_verified = false, updated_at = NOW() WHERE id = $1', [id]);
     }
     res.redirect('/admin/properties');
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Публикация объекта в Zeevou (единый аккаунт Madeirabook).
+// Порядок: сначала создаём property (нужен id для привязки фото),
+// затем заливаем и привязываем изображения.
+router.post('/zeevou/publish/:propertyId', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.propertyId, 10);
+    if (!id) return res.status(400).json({ ok: false, error: 'Bad id' });
+
+    const pr = await db.query(
+      'SELECT p.id, p.title, p.slug, p.description, p.short_description, p.max_guests, '
+      + 'p.price_per_night, p.pms, p.pms_property_id, l.name AS location_name '
+      + 'FROM properties p LEFT JOIN locations l ON l.id = p.location_id '
+      + 'WHERE p.id = $1',
+      [id]
+    );
+    if (!pr.rows.length) return res.status(404).json({ ok: false, error: 'Property not found' });
+    const prop = pr.rows[0];
+    if (prop.pms === 'zeevou' && prop.pms_property_id) {
+      return res.json({ ok: true, zeevouId: prop.pms_property_id, photos: 0, alreadyPublished: true });
+    }
+
+    // area: ?area=<id|iri> или поиск по имени локации
+    let area = req.query.area || null;
+    if (!area) {
+      const areas = await zeevou.zeevouRequest('GET', '/apis/areas', null,
+        { area_name: prop.location_name || 'Funchal' });
+      const list = Array.isArray(areas) ? areas : (areas['hydra:member'] || areas.data || []);
+      area = list.length ? (list[0].id || list[0]['@id']) : null;
+    }
+    if (!area) {
+      return res.status(422).json({
+        ok: false,
+        error: 'Zeevou area not found. Pass ?area=<id> (see GET /apis/areas).',
+      });
+    }
+
+    // валюта EUR → id ресурса
+    const cur = await zeevou.zeevouRequest('GET', '/apis/currencies/EUR');
+    const currency = (cur && (cur.id || cur['@id'])) || 'EUR';
+
+    const created = await zeevou.createProperty({
+      name: prop.title,
+      shortName: prop.slug || prop.title,
+      description: prop.description || prop.short_description || '',
+      area,
+      currency,
+      unitTypeName: 'Entire property',
+      maxCapacity: prop.max_guests || 2,
+      address: {
+        city: prop.location_name || 'Funchal',
+        country: 'PT',
+      },
+    });
+    const zeevouId = created.id;
+
+    const media = await db.query(
+      'SELECT m.url, m.filename, m.mime_type, m.alt '
+      + 'FROM properties_media pm JOIN media m ON m.id = pm.image_id '
+      + 'WHERE pm._parent_id = $1 ORDER BY pm._order',
+      [id]
+    );
+    let photos = 0;
+    for (let i = 0; i < media.rows.length; i++) {
+      const m = media.rows[i];
+      try {
+        const buf = await zeevou.fetchBuffer(m.url);
+        const f = await zeevou.uploadFile(buf, m.filename || ('photo-' + (i + 1) + '.jpg'), m.mime_type);
+        await zeevou.uploadPropertyImage(zeevouId, f.id, m.alt || prop.title, i + 1);
+        photos++;
+      } catch (e) {
+        logger.warn({ propertyId: id, url: m.url, err: e.message }, 'zeevou photo upload failed');
+      }
+    }
+
+    await db.query(
+      "UPDATE properties SET pms_property_id = $1, pms = 'zeevou', updated_at = NOW() WHERE id = $2",
+      [String(zeevouId), id]
+    );
+
+    logger.info({ propertyId: id, zeevouId, photos }, 'zeevou property published');
+    res.json({ ok: true, zeevouId, photos });
   } catch (e) {
     next(e);
   }

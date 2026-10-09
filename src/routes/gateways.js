@@ -10,6 +10,85 @@ function esc(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+const GATEWAY_STYLES = ['forest', 'sun', 'ocean', 'wild', 'terra'];
+const STYLE_LABELS = {
+  forest: 'Forest',
+  sun: 'Sun',
+  ocean: 'Ocean',
+  wild: 'Wild',
+  terra: 'Terra',
+};
+
+// Галерея шлюзов: смонтирована на /gateways (см. app.js).
+// Проверка baseUrl сохраняет прежнее поведение GET /gateway (fall-through в pages).
+router.get('/', async (req, res, next) => {
+  if (req.baseUrl !== '/gateways') return next();
+  try {
+    const r = await db.query(
+      "SELECT slug, title, subtitle, poster_url, accent_color, style "
+      + "FROM emotional_gateways WHERE status = 'published' ORDER BY display_order, id"
+    );
+
+    const groups = new Map();
+    r.rows.forEach((g) => {
+      const key = GATEWAY_STYLES.includes(g.style) ? g.style : 'other';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(g);
+    });
+    const orderedKeys = GATEWAY_STYLES.filter(k => groups.has(k));
+    if (groups.has('other')) orderedKeys.push('other');
+
+    const sections = orderedKeys.map((key) => {
+      const cards = groups.get(key).map((g) => {
+        const poster = g.poster_url
+          ? '<img src="' + esc(g.poster_url) + '" alt="' + esc(g.title) + '" loading="lazy" '
+            + 'class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">'
+          : '<div class="absolute inset-0" style="background:linear-gradient(160deg, #'
+            + esc(String(g.accent_color || '#1a1a1a').replace('#', '')) + '33, #141414);"></div>';
+        return '<a href="/gateway/' + esc(g.slug) + '" class="group relative shrink-0 w-64 sm:w-72 snap-start '
+          + 'rounded-2xl overflow-hidden border border-white/10 bg-white/[0.03] '
+          + 'hover:border-white/30 transition-colors" style="aspect-ratio:4/5;">'
+          + poster
+          + '<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>'
+          + '<div class="absolute bottom-0 left-0 right-0 p-4 flex items-end justify-between gap-2">'
+          + '<h3 class="text-base font-semibold leading-snug" style="text-shadow:0 1px 6px rgba(0,0,0,0.8);">'
+          + esc(g.title) + '</h3>'
+          + '<span class="shrink-0 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all">→</span>'
+          + '</div></a>';
+      }).join('\n');
+      return '<section class="mb-12">'
+        + '<h2 class="font-cormorant text-3xl sm:text-4xl font-semibold mb-5 tracking-wide">'
+        + esc(STYLE_LABELS[key] || 'Other') + '</h2>'
+        + '<div class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory '
+        + '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden">' + cards + '</div>'
+        + '</section>';
+    }).join('\n');
+
+    res.send(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Gateways — Madeirabook</title>
+<meta name="description" content="Emotional gateways — choose your state of mind.">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+<script>tailwind.config = { theme: { extend: { fontFamily: { cormorant: ['"Cormorant Garamond"', 'Georgia', 'serif'] } } } };</script>
+<style>
+  body { background: #0a0a0a; color: #f5f5f7; font-family: Georgia, serif; min-height: 100vh; }
+</style>
+</head>
+<body>
+<main class="max-w-6xl mx-auto px-5 sm:px-8 py-12 sm:py-16">
+  <p class="text-xs uppercase tracking-[0.3em] text-white/40 mb-2">Madeirabook</p>
+  <h1 class="font-cormorant text-4xl sm:text-5xl font-semibold mb-10">Gateways</h1>
+  ${sections || '<p class="text-white/50">No gateways published yet.</p>'}
+</main>
+<script src="/sounds.js" defer></script></body></html>`);
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.get('/:slug', async (req, res, next) => {
   try {
     const { slug } = req.params;
@@ -66,6 +145,9 @@ ${g.poster_url ? '<meta property="og:image" content="' + esc(g.poster_url) + '">
 
   .back-link { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.5); text-decoration: none; font-size: 13px; z-index: 3; }
 
+  .all-gateways-btn { position: fixed; top: 16px; left: 16px; z-index: 3; padding: 10px 16px; border-radius: 999px; background: rgba(10,10,10,0.5); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.2); color: #f5f5f7; text-decoration: none; font-size: 13px; font-family: Georgia, serif; transition: all .2s; -webkit-tap-highlight-color: transparent; }
+  .all-gateways-btn:hover, .all-gateways-btn:active { background: rgba(var(--accent-rgb), 0.3); border-color: rgba(var(--accent-rgb), 0.5); }
+
   @media (max-width: 480px) {
     .title { font-size: 26px; }
     .subtitle { font-size: 14px; margin-bottom: 20px; }
@@ -77,6 +159,8 @@ ${g.poster_url ? '<meta property="og:image" content="' + esc(g.poster_url) + '">
 </style>
 </head>
 <body>
+
+<a href="/gateways" class="all-gateways-btn">← Back to all gateways</a>
 
 <div class="stage">
   ${g.video_url
