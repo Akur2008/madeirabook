@@ -129,9 +129,9 @@ ${g.poster_url ? '<meta property="og:image" content="' + esc(g.poster_url) + '">
   .stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.75); }
   .stage::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,10,0.15) 0%, rgba(10,10,10,0.35) 50%, rgba(10,10,10,0.75) 100%); }
 
-  .overlay { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 16px; }
+  .overlay { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 20px 16px 60px 16px; }
 
-  .glass { background: rgba(10,10,10,0.08); backdrop-filter: blur(24px) saturate(120%); -webkit-backdrop-filter: blur(24px) saturate(120%); border: 1px solid rgba(var(--accent-rgb), 0.25); border-radius: 20px; padding: 28px 24px; max-width: 480px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+  .glass { background: rgba(10,10,10,0.04); backdrop-filter: blur(14px) saturate(110%); -webkit-backdrop-filter: blur(14px) saturate(110%); border: 1px solid rgba(var(--accent-rgb), 0.20); border-radius: 20px; padding: 24px 22px; max-width: 480px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
 
   .title { font-size: 34px; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.5px; line-height: 1.1; text-shadow: 0 2px 12px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.9); }
   .subtitle { color: #e0e0e5; font-size: 15px; margin: 0 0 28px 0; line-height: 1.4; text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
