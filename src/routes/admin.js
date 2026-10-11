@@ -5,6 +5,7 @@ const stripeSvc = require('../services/stripe');
 const config = require('../config');
 const logger = require('../logger');
 const zeevou = require('../services/pms/zeevou');
+const zeevouOauth = require('../services/pms/zeevou-oauth');
 const { Resend } = require('resend');
 
 const router = express.Router();
@@ -634,6 +635,35 @@ router.post('/zeevou/publish/:propertyId', async (req, res, next) => {
   } catch (e) {
     next(e);
   }
+});
+
+// --- Zeevou OAuth flow (authorization_code) ---
+const zeevouCallbackUrl = () => config.APP_URL + '/admin/zeevou/oauth/callback';
+
+router.get('/zeevou/oauth/start', (req, res, next) => {
+  try {
+    res.redirect(zeevouOauth.buildAuthorizeUrl(zeevouCallbackUrl()));
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get('/zeevou/oauth/callback', async (req, res, next) => {
+  try {
+    if (req.query.error) {
+      return res.status(400).json({ ok: false, error: req.query.error, description: req.query.error_description });
+    }
+    const code = req.query.code;
+    if (!code) return res.status(400).json({ ok: false, error: 'Missing code' });
+    await zeevouOauth.exchangeCode(String(code), zeevouCallbackUrl());
+    res.redirect('/admin/zeevou/status');
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get('/zeevou/status', (req, res) => {
+  res.json({ ok: true, ...zeevouOauth.getStatus(), callback_url: zeevouCallbackUrl() });
 });
 
 module.exports = router;

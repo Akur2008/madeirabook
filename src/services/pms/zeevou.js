@@ -1,18 +1,18 @@
 const crypto = require('crypto');
 const https = require('https');
 const logger = require('../../logger');
+const oauth = require('./zeevou-oauth');
 
 // База URL — переключается через env (sandbox / live)
 const BASE = process.env.ZEEVOU_BASE_URL || process.env.ZEEVOU_SANDBOX_URL || 'https://sandbox.zeevou.com';
 const HOST = new URL(BASE).hostname;
 
 /**
- * Персональный токен из env (OAuth flow — отдельная задача).
+ * Bearer-токен из OAuth flow (authorization_code или client_credentials).
+ * Personal Token Zeevou не поддерживает — только OAuth.
  */
 function getToken() {
-  const token = process.env.ZEEVOU_API_TOKEN;
-  if (!token) throw new Error('ZEEVOU_API_TOKEN missing');
-  return token;
+  return oauth.getAccessToken();
 }
 
 /**
@@ -25,7 +25,7 @@ function getToken() {
  * @param {string|null} rawContentType - Content-Type для rawBody
  */
 async function zeevouRequest(method, path, bodyObj, queryObj, rawBody, rawContentType) {
-  const token = getToken();
+  const token = await getToken();
   const bodyStr = rawBody || (bodyObj ? JSON.stringify(bodyObj) : '');
   let urlPath = path;
   if (queryObj && Object.keys(queryObj).length) {
