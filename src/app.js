@@ -24,6 +24,7 @@ const authRoutes = require('./routes/auth');
 const bookingsRoutes = require('./routes/bookings');
 const statsRoutes = require('./routes/stats');
 const escapeRoutes = require('./routes/escape');
+const searchRoutes = require('./routes/search');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -105,6 +106,8 @@ app.use('/api/check-availability', availabilityRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/escape', escapeRoutes);
 app.use('/api/escape-card', escapeRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/search-availability', searchRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/sounds', soundsRoutes);
 app.use('/gateway', gatewayRoutes);
