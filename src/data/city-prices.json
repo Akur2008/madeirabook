@@ -1,0 +1,12 @@
+{
+  "london": { "name": "London", "price": 27, "currency": "EUR" },
+  "lisbon": { "name": "Lisbon", "price": 17, "currency": "EUR" },
+  "madrid": { "name": "Madrid", "price": 39, "currency": "EUR" },
+  "paris": { "name": "Paris", "price": 59, "currency": "EUR" },
+  "berlin": { "name": "Berlin", "price": 89, "currency": "EUR" },
+  "amsterdam": { "name": "Amsterdam", "price": 79, "currency": "EUR" },
+  "porto": { "name": "Porto", "price": 24, "currency": "EUR" },
+  "frankfurt": { "name": "Frankfurt", "price": 99, "currency": "EUR" },
+  "manchester": { "name": "Manchester", "price": 42, "currency": "EUR" },
+  "barcelona": { "name": "Barcelona", "price": 54, "currency": "EUR" }
+}

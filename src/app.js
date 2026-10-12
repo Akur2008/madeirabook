@@ -22,6 +22,8 @@ const oasisRoutes = require('./routes/oasis');
 const guidesRoutes = require('./routes/guides');
 const authRoutes = require('./routes/auth');
 const bookingsRoutes = require('./routes/bookings');
+const statsRoutes = require('./routes/stats');
+const escapeRoutes = require('./routes/escape');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -100,6 +102,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingsRoutes);
 app.use('/api/subscribe', subscribeRoutes);
 app.use('/api/check-availability', availabilityRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/escape', escapeRoutes);
+app.use('/api/escape-card', escapeRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/sounds', soundsRoutes);
 app.use('/gateway', gatewayRoutes);
