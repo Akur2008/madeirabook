@@ -157,3 +157,5 @@ zeevou_*.txt
 payload-types.ts
 tmp-cols.js
 .env*
+service-account.json
+node_modules/
