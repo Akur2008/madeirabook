@@ -29,5 +29,17 @@ export const Subscribers: CollectionConfig = {
       type: 'number',
       index: true,
     },
+    {
+      name: 'unsubscribeToken',
+      type: 'text',
+      unique: true,
+      index: true,
+      admin: { readOnly: true },
+    },
+    {
+      name: 'unsubscribedAt',
+      type: 'date',
+      admin: { readOnly: true },
+    },
   ],
 }

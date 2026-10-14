@@ -1,13 +1,31 @@
 /**
  * Шаблоны для очереди email_queue.
- * Каждый — функция (subscriberEmail) => { subject, html, text }
+ * Каждый — функция (subscriber) => { subject, html, text }
+ * subscriber — строка из subscribers (минимум { email, unsubscribe_token }).
  * Сейчас простые: постер-плейсхолдер + текст + кнопка.
  * Потом заменим posterUrl на реальные кадры.
  */
 
+const APP_URL = process.env.APP_URL || 'https://app.madeirabook.com';
+
+function unsubscribeUrl(token) {
+  return `${APP_URL}/api/unsubscribe/${token}`;
+}
+
+function unsubscribeFooter(token) {
+  return `
+    <p style="color: #6b7280; font-size: 11px; margin-top: 32px; line-height: 1.5;">
+      You received this email because you subscribed at madeirabook.com.<br>
+      <a href="${unsubscribeUrl(token)}" style="color: #6b7280; text-decoration: underline;">
+        Unsubscribe
+      </a>
+    </p>
+  `;
+}
+
 const BTN = 'display:inline-block;padding:14px 28px;background:#10b981;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;';
 
-function wrapper(posterUrl, title, bodyText, ctaText, ctaUrl) {
+function wrapper(posterUrl, title, bodyText, ctaText, ctaUrl, token) {
   const poster = posterUrl
     ? '<img src="' + posterUrl + '" alt="" style="width:100%;max-width:600px;border-radius:12px;display:block;margin-bottom:20px;">'
     : '';
@@ -19,11 +37,13 @@ function wrapper(posterUrl, title, bodyText, ctaText, ctaUrl) {
     + '<p style="color:#9ca3af;font-size:12px;margin-top:32px;border-top:1px solid #e5e7eb;padding-top:16px;">'
     + 'Madeirabook · <a href="https://app.madeirabook.com" style="color:#9ca3af;">app.madeirabook.com</a><br>'
     + 'You are receiving this because you subscribed to our guide.'
-    + '</p></div>';
+    + '</p>'
+    + unsubscribeFooter(token)
+    + '</div>';
 }
 
 const templates = {
-  gateway_ocean_reactivation: () => ({
+  gateway_ocean_reactivation: (subscriber) => ({
     subject: 'We saved you a way in',
     text: 'You left us your email a while back. We haven\'t forgotten. Here\'s the entrance to four elements of Madeira: https://app.madeirabook.com/gateway/ocean',
     html: wrapper(
@@ -33,11 +53,12 @@ const templates = {
       + '<p>Since then we\'ve built something quiet — four ways into the island, each one tuned to a different mood.</p>'
       + '<p>Two questions. Then we show you the sea, the forest, the sun, or the wild north. Your choice.</p>',
       'Find your element →',
-      'https://app.madeirabook.com/gateway/ocean?utm_source=email&utm_campaign=reactivation'
+      'https://app.madeirabook.com/gateway/ocean?utm_source=email&utm_campaign=reactivation',
+      subscriber.unsubscribe_token
     ),
   }),
 
-  gateway_ocean: () => ({
+  gateway_ocean: (subscriber) => ({
     subject: 'The ocean doesn\'t ask questions — but you do',
     text: 'Two questions. Then we show you the sea. Click to enter: https://app.madeirabook.com/gateway/ocean',
     html: wrapper(
@@ -47,11 +68,12 @@ const templates = {
       + '<p>Two questions. Then we show you the sea.</p>'
       + '<p>Which element of Madeira is yours — the wild ocean, the misty forest, the sun on the basalt, or the waterfalls of the north?</p>',
       'Enter the gateway →',
-      'https://app.madeirabook.com/gateway/ocean?utm_source=email&utm_campaign=gateway_ocean'
+      'https://app.madeirabook.com/gateway/ocean?utm_source=email&utm_campaign=gateway_ocean',
+      subscriber.unsubscribe_token
     ),
   }),
 
-  restaurants_funchal: () => ({
+  restaurants_funchal: (subscriber) => ({
     subject: '5 restaurants in Funchal with 30–50% off',
     text: 'Inside: 5 restaurants in Funchal with TheFork discounts. Click to see the guide.',
     html: wrapper(
@@ -60,11 +82,12 @@ const templates = {
       '<p>Funchal has a secret: TheFork discounts. We collected 5 places where dinner costs 30–50% less than the menu price.</p>'
       + '<p>All within a 15-minute walk from the Lido.</p>',
       'See the guide →',
-      'https://www.madeirabook.com/where-to-eat-madeira.html?utm_source=email&utm_campaign=restaurants_funchal'
+      'https://www.madeirabook.com/where-to-eat-madeira.html?utm_source=email&utm_campaign=restaurants_funchal',
+      subscriber.unsubscribe_token
     ),
   }),
 
-  madeira_winter: () => ({
+  madeira_winter: (subscriber) => ({
     subject: 'Madeira in winter: +20°C while Europe freezes',
     text: 'While London has -5°C, Madeira has +20°C. Flights from €27.',
     html: wrapper(
@@ -74,11 +97,12 @@ const templates = {
       + '<p>Flights from London: from €27. Fewer tourists than summer — 3× less.</p>'
       + '<p>The best time to come is exactly when everyone else is at home.</p>',
       'See winter guide →',
-      'https://www.madeirabook.com/best-time-to-visit-madeira.html?utm_source=email&utm_campaign=madeira_winter'
+      'https://www.madeirabook.com/best-time-to-visit-madeira.html?utm_source=email&utm_campaign=madeira_winter',
+      subscriber.unsubscribe_token
     ),
   }),
 
-  return_offer: () => ({
+  return_offer: (subscriber) => ({
     subject: 'The apartments you saw — 10% off for you',
     text: 'Three ocean-view apartments in Funchal. Direct booking, no platform fees.',
     html: wrapper(
@@ -89,9 +113,10 @@ const templates = {
       + '607 — studio, 6th floor, ocean view.<br>'
       + 'Penthouse — top floor, panoramic terrace.</p>',
       'See availability →',
-      'https://app.madeirabook.com/?utm_source=email&utm_campaign=return_offer'
+      'https://app.madeirabook.com/?utm_source=email&utm_campaign=return_offer',
+      subscriber.unsubscribe_token
     ),
   }),
 };
 
-module.exports = { templates };
+module.exports = { templates, unsubscribeUrl, unsubscribeFooter };

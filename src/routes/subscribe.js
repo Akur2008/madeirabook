@@ -1,7 +1,9 @@
 const express = require('express');
+const crypto = require('crypto');
 const { z } = require('zod');
 const { Resend } = require('resend');
 const db = require('../../db/client');
+const { unsubscribeFooter, unsubscribeUrl } = require('../emails/templates');
 
 const router = express.Router();
 
@@ -19,13 +21,19 @@ router.post('/', async (req, res) => {
     }
     const resend = new Resend(process.env.RESEND_API_KEY);
 
+    // ON CONFLICT DO UPDATE (no-op) — чтобы получить id/token и при повторной подписке.
+    // Существующий unsubscribe_token не перезаписываем: COALESCE берёт старый, если он есть.
     const ins = await db.query(
-      'INSERT INTO subscribers (email, source) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING RETURNING id',
-      [email, source]
+      `INSERT INTO subscribers (email, source, unsubscribe_token) VALUES ($1, $2, $3)
+       ON CONFLICT (email) DO UPDATE
+         SET unsubscribe_token = COALESCE(subscribers.unsubscribe_token, EXCLUDED.unsubscribe_token)
+       RETURNING id, unsubscribe_token, (xmax = 0) AS is_new`,
+      [email, source, crypto.randomBytes(24).toString('hex')]
     );
-    // Если подписчик новый — кладём 3 письма в очередь (welcome уже отправляется ниже)
-    if (ins.rows.length) {
-      const subId = ins.rows[0].id;
+    const subId = ins.rows[0].id;
+    const unsubToken = ins.rows[0].unsubscribe_token;
+    // Если подписчик новый — кладём 4 письма в очередь (welcome уже отправляется ниже)
+    if (ins.rows[0].is_new) {
       await db.query(
         `INSERT INTO email_queue (subscriber_id, template, send_at) VALUES
           ($1, 'gateway_ocean',      NOW() + INTERVAL '1 day'),
@@ -45,7 +53,11 @@ router.post('/', async (req, res) => {
       to: email,
       replyTo: 'akur2013@gmail.com',
       subject: 'Your Madeira Travel Guide 🌴',
-      text: 'Thanks for subscribing! Your Madeira travel guide is attached.\n\nGet restaurant discounts and insider tips in Telegram: https://t.me/Madeirabookbot?start=pdf_guide',
+      text: 'Thanks for subscribing! Your Madeira travel guide is attached.\n\nGet restaurant discounts and insider tips in Telegram: https://t.me/Madeirabookbot?start=pdf_guide\n\nUnsubscribe: ' + unsubscribeUrl(unsubToken),
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeUrl(unsubToken)}>, <mailto:hello@madeirabook.com?subject=unsubscribe>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1f2937;">
           <h2 style="color: #064e3b;">Thanks for subscribing!</h2>
@@ -55,6 +67,7 @@ router.post('/', async (req, res) => {
           </p>
           <p style="color: #6b7280; font-size: 14px;">Inside you'll find restaurant discounts of 30–50%, flight price alerts, and other useful guides for your trip to Madeira.</p>
           <p style="color: #6b7280; font-size: 14px;">— The Madeirabook team</p>
+          ${unsubscribeFooter(unsubToken)}
         </div>
       `,
       attachments: [

@@ -14,6 +14,7 @@ const p = new Pool({ connectionString: process.env.DATABASE_URL });
     SELECT s.id, s.email
     FROM subscribers s
     WHERE s.created_at < NOW() - INTERVAL '24 hours'
+      AND s.unsubscribed_at IS NULL
       AND NOT EXISTS (
         SELECT 1 FROM email_queue eq
         WHERE eq.subscriber_id = s.id
